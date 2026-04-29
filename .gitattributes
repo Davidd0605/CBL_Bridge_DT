@@ -1,0 +1,66 @@
+# Auto-detect text files and normalize line endings
+* text=auto
+
+# ── Python ────────────────────────────────────────
+*.py        text eol=lf
+*.pyi       text eol=lf
+*.txt       text eol=lf
+*.md        text eol=lf
+*.toml      text eol=lf
+*.cfg       text eol=lf
+*.ini       text eol=lf
+*.env       text eol=lf
+*.sh        text eol=lf
+
+# ── Unity / C# ────────────────────────────────────
+*.cs        text eol=crlf
+*.meta      text eol=crlf
+*.shader    text eol=crlf
+*.hlsl      text eol=crlf
+*.glsl      text eol=crlf
+*.cginc     text eol=crlf
+*.compute   text eol=crlf
+
+# ── Unity binary — no diff, no merge, no EOL touch ─
+*.unity     binary
+*.prefab    binary
+*.asset     binary
+*.mat       binary
+*.anim      binary
+*.controller binary
+*.overrideController binary
+*.physicsMaterial binary
+*.physicsMaterial2D binary
+*.cubemap   binary
+*.unitypackage binary
+
+# ── Images ────────────────────────────────────────
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.bmp       binary
+*.tga       binary
+*.tiff      binary
+*.psd       binary
+*.webp      binary
+
+# ── Audio ─────────────────────────────────────────
+*.mp3       binary
+*.wav       binary
+*.ogg       binary
+*.aiff      binary
+
+# ── 3D / mesh ─────────────────────────────────────
+*.fbx       binary
+*.obj       binary
+*.blend     binary
+*.dae       binary
+*.3ds       binary
+
+# ── Compiled / binary ─────────────────────────────
+*.dll       binary
+*.exe       binary
+*.so        binary
+*.pyc       binary
+*.pyo       binary

@@ -8,7 +8,7 @@
 3. It runs as a Windows service automatically on `localhost:1883`
 ### IF USING REMOTE BROKER
 1. ASK FOR CREDENTIALS AND CONNECT TO REMOTE BROKER
-## 2. Python Dependencies -- OLD
+## 2. Python Dependencies -- OLD -- FERNANDO PLEASE UPDATE
 ```bash
 pip install epyt
 pip install paho-mqtt

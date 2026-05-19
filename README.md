@@ -7,7 +7,7 @@
 2. Run the installer
 3. It runs as a Windows service automatically on `localhost:1883`
 ### IF USING REMOTE BROKER
-1. ASK FOR CREDENTIALS AND CONNECT TO REMOTE BROKER
+1. Ask for credentials, connect to remote broker (if it is down, ask david)
 ## 2. Python Dependencies -- OLD -- FERNANDO PLEASE UPDATE
 ```bash
 pip install epyt

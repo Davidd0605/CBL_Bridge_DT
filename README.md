@@ -6,7 +6,8 @@
 1. Download from https://mosquitto.org/download/ -> `mosquitto-2.x.x-install-win64.exe`
 2. Run the installer
 3. It runs as a Windows service automatically on `localhost:1883`
-
+### IF USING REMOTE BROKER
+1. ASK FOR CREDENTIALS AND CONNECT TO REMOTE BROKER
 ## 2. Python Dependencies
 ```bash
 pip install epyt

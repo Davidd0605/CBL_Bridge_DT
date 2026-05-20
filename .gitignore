@@ -156,3 +156,7 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 .streamlit/secrets.toml
+.env
+Assets/Resources/mqttconfig.json
+Assets/Resources/mqttconfig.json.meta
+Assets/Resources/.mqttconfig.json

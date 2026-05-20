@@ -12,16 +12,10 @@ class BridgeLoadApp:
         self.root = root
         self.root.title("OpenSeesPy Steel Bridge Load Sensor")
 
-        self.bridge_path = Path(__file__).with_name("bridge.json")
+        self.bridge_path = Path(__file__).with_name("bridge_3d_pratt.json")
         self.bridge = self._load_bridge(self.bridge_path)
-        self.node_coords = {
-            int(node["id"]): (float(node["x"]), float(node["y"]))
-            for node in self.bridge["nodes"]
-        }
-        self.node_labels = {
-            int(node["id"]): node.get("label", str(node["id"]))
-            for node in self.bridge["nodes"]
-        }
+        self.node_coords = {int(node["id"]): (float(node["x"]), float(node["y"])) for node in self.bridge["nodes"]}
+        self.node_labels = {int(node["id"]): node.get("label", str(node["id"])) for node in self.bridge["nodes"]}
         self.elements = []
         for element in self.bridge["elements"]:
             parsed = dict(element)
@@ -60,8 +54,7 @@ class BridgeLoadApp:
         self.current_lambda = 0.0
 
         self.default_load_node = int(
-            self.bridge.get("midspan_sensor_node")
-            or self.load_points[len(self.load_points) // 2]["node"]
+            self.bridge.get("midspan_sensor_node") or self.load_points[len(self.load_points) // 2]["node"]
         )
         self.selected_load_node = self.default_load_node
         self.reference_load_n = 100.0
@@ -76,9 +69,7 @@ class BridgeLoadApp:
         self.load_force_var = tk.StringVar(value=f"{self.reference_load_n:.1f}")
         self.sensor_var = tk.StringVar()
 
-        self.canvas = tk.Canvas(
-            root, width=self.canvas_width, height=self.canvas_height, bg="white"
-        )
+        self.canvas = tk.Canvas(root, width=self.canvas_width, height=self.canvas_height, bg="white")
         self.canvas.pack(padx=10, pady=10)
         self.canvas.bind("<Button-1>", self.on_canvas_click)
 
@@ -110,26 +101,18 @@ class BridgeLoadApp:
         self.load_combo.bind("<<ComboboxSelected>>", self.on_load_point_selected)
 
         tk.Label(self.button_frame, text="Target load (N)").pack(side="left")
-        self.force_entry = tk.Entry(
-            self.button_frame, textvariable=self.load_force_var, width=10
-        )
+        self.force_entry = tk.Entry(self.button_frame, textvariable=self.load_force_var, width=10)
         self.force_entry.pack(side="left", padx=(6, 12))
         self.force_entry.bind("<Return>", self.on_force_changed)
         self.force_entry.bind("<FocusOut>", self.on_force_changed)
 
-        self.step_button = tk.Button(
-            self.button_frame, text="Apply Load Step", command=self.apply_load_step
-        )
+        self.step_button = tk.Button(self.button_frame, text="Apply Load Step", command=self.apply_load_step)
         self.step_button.pack(side="left")
 
-        self.full_load_button = tk.Button(
-            self.button_frame, text="Apply Full Load", command=self.apply_full_load
-        )
+        self.full_load_button = tk.Button(self.button_frame, text="Apply Full Load", command=self.apply_full_load)
         self.full_load_button.pack(side="left", padx=(8, 0))
 
-        self.reset_button = tk.Button(
-            self.button_frame, text="Reset Model", command=self.reset_model
-        )
+        self.reset_button = tk.Button(self.button_frame, text="Reset Model", command=self.reset_model)
         self.reset_button.pack(side="left", padx=(8, 0))
 
         self.sensor_label = tk.Label(root, textvariable=self.sensor_var, anchor="w")
@@ -148,10 +131,7 @@ class BridgeLoadApp:
             return json.load(bridge_file)
 
     def _load_point_choices(self):
-        return [
-            f"{item['label']} (node {int(item['node'])})"
-            for item in self.load_points
-        ]
+        return [f"{item['label']} (node {int(item['node'])})" for item in self.load_points]
 
     def _sync_load_combo(self):
         for choice in self._load_point_choices():
@@ -179,9 +159,7 @@ class BridgeLoadApp:
             return [int(fixity[0]), int(fixity[1]), 0]
         if len(fixity) == 3:
             return [int(fixity[0]), int(fixity[1]), int(fixity[2])]
-        raise ValueError(
-            f"Support at node {support.get('node')} must have 2 or 3 fixity values."
-        )
+        raise ValueError(f"Support at node {support.get('node')} must have 2 or 3 fixity values.")
 
     def _is_frame_element(self, element):
         if self.force_all_members_as_frame:
@@ -210,9 +188,7 @@ class BridgeLoadApp:
 
         def get_positive_number(key, default, strictly_positive=True):
             value = float(element.get(key, default))
-            if (strictly_positive and value <= 0.0) or (
-                not strictly_positive and value < 0.0
-            ):
+            if (strictly_positive and value <= 0.0) or (not strictly_positive and value < 0.0):
                 raise ValueError(f"Element {element_id} has invalid {key}={value}.")
             if key not in element:
                 defaults_used.append(key)
@@ -222,9 +198,7 @@ class BridgeLoadApp:
         if "S" in element:
             section_modulus = get_positive_number("S", self.default_iz_m4 / (depth / 2.0))
         elif "section_modulus" in element:
-            section_modulus = get_positive_number(
-                "section_modulus", self.default_iz_m4 / (depth / 2.0)
-            )
+            section_modulus = get_positive_number("section_modulus", self.default_iz_m4 / (depth / 2.0))
         else:
             section_modulus = None
 
@@ -233,12 +207,8 @@ class BridgeLoadApp:
             "Iz": get_positive_number("Iz", self.default_iz_m4),
             "E": get_positive_number("E", self.default_e_modulus_pa),
             "depth": depth,
-            "density": get_positive_number(
-                "density", self.default_density_kg_m3, strictly_positive=False
-            ),
-            "yield_stress": get_positive_number(
-                "yield_stress", self.default_yield_stress_pa
-            ),
+            "density": get_positive_number("density", self.default_density_kg_m3, strictly_positive=False),
+            "yield_stress": get_positive_number("yield_stress", self.default_yield_stress_pa),
         }
         if section_modulus is None:
             section_modulus = section["Iz"] / (section["depth"] / 2.0)
@@ -246,16 +216,12 @@ class BridgeLoadApp:
         section["S"] = section_modulus
 
         if defaults_used:
-            self.model_warnings.append(
-                f"Element {element_id} used default {', '.join(defaults_used)}."
-            )
+            self.model_warnings.append(f"Element {element_id} used default {', '.join(defaults_used)}.")
         self._element_sections[element_id] = section
         return section
 
     def _element_length(self, element):
-        return self._distance(
-            self.node_coords[element["i"]], self.node_coords[element["j"]]
-        )
+        return self._distance(self.node_coords[element["i"]], self.node_coords[element["j"]])
 
     def _validate_bridge_data(self):
         errors = []
@@ -294,9 +260,7 @@ class BridgeLoadApp:
         if constrained_dofs[1] == 0:
             errors.append("At least one support must restrain Y translation.")
         if len(restrained_support_nodes) < 2 and constrained_dofs[2] == 0:
-            errors.append(
-                "Use at least two restrained support points or one rotationally fixed support."
-            )
+            errors.append("Use at least two restrained support points or one rotationally fixed support.")
         if support_fixities and all(fixity == [0, 1, 0] for _, fixity in support_fixities):
             self.model_warnings.append(
                 "All supports are vertical rollers only; the model may have a rigid-body mechanism."
@@ -309,9 +273,7 @@ class BridgeLoadApp:
             for key in ("i", "j"):
                 if element[key] not in node_ids:
                     nodes_ok = False
-                    errors.append(
-                        f"Element {element['id']} references missing node {element[key]}."
-                    )
+                    errors.append(f"Element {element['id']} references missing node {element[key]}.")
             if element["i"] == element["j"]:
                 errors.append(f"Element {element['id']} has identical end nodes.")
             try:
@@ -331,14 +293,9 @@ class BridgeLoadApp:
 
         support_nodes = {int(support.get("node", -1)) for support in self.supports}
         for node, connected_frame_flags in element_types_by_node.items():
-            if (
-                node not in support_nodes
-                and connected_frame_flags
-                and not any(connected_frame_flags)
-            ):
+            if node not in support_nodes and connected_frame_flags and not any(connected_frame_flags):
                 self.model_warnings.append(
-                    f"Node {node} is connected only to axial-only elements; "
-                    "Rz may be unstable in a 3-DOF frame model."
+                    f"Node {node} is connected only to axial-only elements; Rz may be unstable in a 3-DOF frame model."
                 )
 
         for load_point in self.load_points:
@@ -362,12 +319,7 @@ class BridgeLoadApp:
 
         for element in self.elements:
             section = self._get_element_section(element)
-            weight = (
-                section["density"]
-                * section["A"]
-                * self._element_length(element)
-                * self.gravity
-            )
+            weight = section["density"] * section["A"] * self._element_length(element) * self.gravity
             self.total_self_weight_n += weight
             loads[element["i"]] = loads.get(element["i"], 0.0) + weight / 2.0
             loads[element["j"]] = loads.get(element["j"], 0.0) + weight / 2.0
@@ -375,22 +327,14 @@ class BridgeLoadApp:
 
     def _distributed_live_loads(self):
         if not self.distribute_live_load:
-            return {
-                int(node): float(load)
-                for node, load in self.node_loads.items()
-                if load > 0.0
-            }
+            return {int(node): float(load) for node, load in self.node_loads.items() if load > 0.0}
 
         ordered_nodes = sorted(
             {int(point["node"]) for point in self.load_points},
             key=lambda node: self.node_coords[node][0],
         )
         if len(ordered_nodes) <= 1:
-            return {
-                int(node): float(load)
-                for node, load in self.node_loads.items()
-                if load > 0.0
-            }
+            return {int(node): float(load) for node, load in self.node_loads.items() if load > 0.0}
 
         distributed = {}
         for selected_node, load in self.node_loads.items():
@@ -404,11 +348,7 @@ class BridgeLoadApp:
 
             index = ordered_nodes.index(selected_node)
             left_node = ordered_nodes[index - 1] if index > 0 else None
-            right_node = (
-                ordered_nodes[index + 1]
-                if index < len(ordered_nodes) - 1
-                else None
-            )
+            right_node = ordered_nodes[index + 1] if index < len(ordered_nodes) - 1 else None
 
             if left_node is None or right_node is None:
                 neighbour = right_node if left_node is None else left_node
@@ -416,13 +356,9 @@ class BridgeLoadApp:
             else:
                 selected_x = self.node_coords[selected_node][0]
                 left_distance = max(selected_x - self.node_coords[left_node][0], 1e-9)
-                right_distance = max(
-                    self.node_coords[right_node][0] - selected_x, 1e-9
-                )
+                right_distance = max(self.node_coords[right_node][0] - selected_x, 1e-9)
                 adjacent_total = 0.50
-                left_share = adjacent_total * right_distance / (
-                    left_distance + right_distance
-                )
+                left_share = adjacent_total * right_distance / (left_distance + right_distance)
                 right_share = adjacent_total - left_share
                 shares = {
                     selected_node: 0.50,
@@ -515,9 +451,7 @@ class BridgeLoadApp:
 
     def _draw_node(self, p, color, radius=4):
         x, y = self.world_to_canvas(*p)
-        self.canvas.create_oval(
-            x - radius, y - radius, x + radius, y + radius, fill=color, outline=color
-        )
+        self.canvas.create_oval(x - radius, y - radius, x + radius, y + radius, fill=color, outline=color)
 
     def _draw_bridge(self):
         self.canvas.delete("all")
@@ -536,13 +470,7 @@ class BridgeLoadApp:
                 self.node_coords[element["i"]],
                 self.node_coords[element["j"]],
                 color=color,
-                width=(
-                    6
-                    if element["id"] == controlling_element
-                    else 4
-                    if "chord" in element["type"]
-                    else 3
-                ),
+                width=(6 if element["id"] == controlling_element else 4 if "chord" in element["type"] else 3),
             )
 
         for node_tag in self.node_coords:
@@ -587,18 +515,13 @@ class BridgeLoadApp:
         selected_applied_load = distributed_loads.get(self.selected_load_node, 0.0)
         for node, load in distributed_loads.items():
             if node != self.selected_load_node and load > 0.0:
-                self._draw_applied_load_arrow(
-                    node, load, "#fb923c", f"Distributed: {load:.1f} N"
-                )
+                self._draw_applied_load_arrow(node, load, "#fb923c", f"Distributed: {load:.1f} N")
 
         self._draw_applied_load_arrow(
             self.selected_load_node,
             selected_applied_load,
             "#f97316",
-            (
-                f"Requested: {requested_load:.1f} N\n"
-                f"Applied here: {selected_applied_load:.1f} N"
-            ),
+            (f"Requested: {requested_load:.1f} N\nApplied here: {selected_applied_load:.1f} N"),
         )
         self.canvas.create_oval(
             x - 13,
@@ -696,11 +619,7 @@ class BridgeLoadApp:
 
     def _update_visual_defo_scale(self):
         self.visual_defo_scale = self.defo_scale
-        if (
-            not self.auto_defo_scale
-            or not self._has_analysis_results()
-            or not self._has_live_load()
-        ):
+        if not self.auto_defo_scale or not self._has_analysis_results() or not self._has_live_load():
             return
 
         max_displacement = 0.0
@@ -717,11 +636,7 @@ class BridgeLoadApp:
                 max(self._total_applied_load() / self.reference_load_n, 0.0),
                 1.0,
             )
-        target_scale = (
-            self.min_deformed_offset_px
-            * live_load_fraction
-            / (max_displacement * self.scale)
-        )
+        target_scale = self.min_deformed_offset_px * live_load_fraction / (max_displacement * self.scale)
         self.visual_defo_scale = max(self.defo_scale, target_scale)
 
     def _display_node_disp(self, node):
@@ -785,16 +700,10 @@ class BridgeLoadApp:
         )
 
     def _update_status(self):
-        total_uy = (
-            ops.nodeDisp(self.selected_load_node, 2)
-            if self._has_analysis_results()
-            else 0.0
-        )
+        total_uy = ops.nodeDisp(self.selected_load_node, 2) if self._has_analysis_results() else 0.0
         live_uy = self._display_node_disp(self.selected_load_node)[1]
         active_load = self._selected_node_load()
-        active_distributed_load = self._distributed_live_loads().get(
-            self.selected_load_node, 0.0
-        )
+        active_distributed_load = self._distributed_live_loads().get(self.selected_load_node, 0.0)
         live_load = self._total_applied_load()
         total_load = live_load + self.total_self_weight_n
         self.status_label.config(
@@ -807,9 +716,7 @@ class BridgeLoadApp:
                 f"Active Uy live: {live_uy:.6e} m, total: {total_uy:.6e} m"
             )
         )
-        self.sensor_var.set(
-            self._sensor_summary() + " | " + self._engineering_summary()
-        )
+        self.sensor_var.set(self._sensor_summary() + " | " + self._engineering_summary())
 
     def _sensor_summary(self):
         readings = []
@@ -818,9 +725,7 @@ class BridgeLoadApp:
             total_uy = ops.nodeDisp(node, 2) if self._has_analysis_results() else 0.0
             live_uy = self._display_node_disp(node)[1]
             readings.append(
-                f"{sensor['sensor_id']} node {node}: "
-                f"{live_uy * 1000.0:.3f} mm live "
-                f"({total_uy * 1000.0:.3f} mm total)"
+                f"{sensor['sensor_id']} node {node}: {live_uy * 1000.0:.3f} mm live ({total_uy * 1000.0:.3f} mm total)"
             )
         return "Deflection sensors: " + " | ".join(readings)
 
@@ -849,11 +754,7 @@ class BridgeLoadApp:
 
             axial_stress = axial_force / section["A"]
             bending_stress = moment / section["S"] if is_frame else 0.0
-            combined_stress = (
-                abs(axial_stress) + abs(bending_stress)
-                if is_frame
-                else abs(axial_stress)
-            )
+            combined_stress = abs(axial_stress) + abs(bending_stress) if is_frame else abs(axial_stress)
             utilization = combined_stress / section["yield_stress"]
             self.element_results[element["id"]] = {
                 "axial_force": axial_force,
@@ -917,9 +818,7 @@ class BridgeLoadApp:
         result = self.element_results[controlling]
         reactions = []
         for node, reaction in self.support_reactions.items():
-            reactions.append(
-                f"R{node}=({reaction[0]:.1f}, {reaction[1]:.1f}, {reaction[2]:.2f})"
-            )
+            reactions.append(f"R{node}=({reaction[0]:.1f}, {reaction[1]:.1f}, {reaction[2]:.2f})")
         reaction_text = "; ".join(reactions) if reactions else "reactions unavailable"
         return (
             "Engineering summary: "
@@ -952,11 +851,7 @@ class BridgeLoadApp:
             self.info_label.config(text="Analysis failed to converge. Try Reset Model.")
             return
 
-        self.info_label.config(
-            text=self._info_message(
-                f"Added {increment:.1f} N at node {self.selected_load_node}."
-            )
-        )
+        self.info_label.config(text=self._info_message(f"Added {increment:.1f} N at node {self.selected_load_node}."))
         self._draw_bridge()
         self._update_status()
 
@@ -974,11 +869,7 @@ class BridgeLoadApp:
             self.info_label.config(text="Analysis failed to converge. Try Reset Model.")
             return
 
-        self.info_label.config(
-            text=self._info_message(
-                f"Added {added_load:.1f} N at node {self.selected_load_node}."
-            )
-        )
+        self.info_label.config(text=self._info_message(f"Added {added_load:.1f} N at node {self.selected_load_node}."))
         self._draw_bridge()
         self._update_status()
 
@@ -995,9 +886,7 @@ class BridgeLoadApp:
 
         if not math.isclose(load, self.reference_load_n):
             self.reference_load_n = load
-            self.info_label.config(
-                text="Target load changed. Existing applied loads were kept."
-            )
+            self.info_label.config(text="Target load changed. Existing applied loads were kept.")
         return True
 
     def on_space_key(self, _event):
@@ -1032,10 +921,7 @@ class BridgeLoadApp:
         self.selected_load_node = node
         self._sync_load_combo()
         self.info_label.config(
-            text=(
-                f"Load sensor moved to node {node}. Existing loads stay in place; "
-                "new load steps apply here."
-            )
+            text=(f"Load sensor moved to node {node}. Existing loads stay in place; new load steps apply here.")
         )
         self._draw_bridge()
         self._update_status()
@@ -1064,8 +950,7 @@ class BridgeLoadApp:
 
     def _capture_dead_load_baseline(self):
         self.dead_load_displacements = {
-            node: (ops.nodeDisp(node, 1), ops.nodeDisp(node, 2))
-            for node in self.node_coords
+            node: (ops.nodeDisp(node, 1), ops.nodeDisp(node, 2)) for node in self.node_coords
         }
 
     def _has_analysis_results(self):
@@ -1085,9 +970,7 @@ class BridgeLoadApp:
         self.node_loads.clear()
         if self._solve_current_loads() == 0:
             self.info_label.config(
-                text=self._info_message(
-                    "Model reset. Press Space or click Apply Load Step to load the point."
-                )
+                text=self._info_message("Model reset. Press Space or click Apply Load Step to load the point.")
             )
         self._draw_bridge()
         self._update_status()

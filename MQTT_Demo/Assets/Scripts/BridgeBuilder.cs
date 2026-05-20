@@ -15,6 +15,10 @@ public class BridgeBuilder : MonoBehaviour
     public float beamRadius = 0.015f;
     public float nodeRadius = 0.03f;
 
+    [Header("Hover UI")]
+    public GameObject hoverCanvasPrefab;
+    public Vector3 hoverUIOffset = new Vector3(0f, 0.1f, 0f);
+
     [Header("Element Colours")]
     public Color colChord = new Color(0.20f, 0.50f, 1.00f);
     public Color colVertical = new Color(0.20f, 0.80f, 0.40f);
@@ -127,13 +131,18 @@ public class BridgeBuilder : MonoBehaviour
             sphere.transform.SetParent(transform);
             sphere.transform.localPosition = pos;
             sphere.transform.localScale = Vector3.one * nodeRadius * 2f;
-            Destroy(sphere.GetComponent<Collider>());
+
+            // keep collider as trigger so raycast still hits it
+            var sc = sphere.GetComponent<Collider>();
+            if (sc != null) sc.isTrigger = true;
 
             var col = supportNodes.Contains(n.id) ? colSupport
                     : sensorNodes.Contains(n.id) ? colSensor
                     : colNode;
             SetColor(sphere, col);
             _nodeObjects[n.id] = sphere;
+
+            AttachHoverable(sphere, $"Node {n.id} — {n.label}");
         }
 
         foreach (var e in data.elements)
@@ -149,15 +158,32 @@ public class BridgeBuilder : MonoBehaviour
             beam.transform.SetParent(transform);
             _beamObjects[e.id] = beam;
             _beamEnds[e.id] = (e.i, e.j);
+
+            AttachHoverable(beam, $"Element {e.id} — {e.type}");
         }
 
         Debug.Log($"BridgeBuilder: {data.nodes.Length} nodes, {data.elements.Length} elements spawned.");
     }
 
+    private void AttachHoverable(GameObject go, string label)
+    {
+        if (hoverCanvasPrefab == null) return;
+
+        var hoverable = go.AddComponent<Hoverable>();
+        var ui = Instantiate(hoverCanvasPrefab, go.transform.position, Quaternion.identity);
+        ui.transform.SetParent(transform);
+        hoverable.uiOffset = hoverUIOffset;
+        hoverable.Init(ui, label);
+    }
+
     private GameObject CreateBeam(Vector3 a, Vector3 b, Color col)
     {
         var go = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        Destroy(go.GetComponent<Collider>());
+
+        // keep collider as trigger so raycast still hits it
+        var bc = go.GetComponent<Collider>();
+        if (bc != null) bc.isTrigger = true;
+
         RepositionBeam(go, a, b);
         SetColor(go, col);
         return go;

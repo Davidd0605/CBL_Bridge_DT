@@ -25,6 +25,8 @@ public class CameraController : MonoBehaviour
 
     void Update()
     {
+        if (Input.GetKeyDown(KeyCode.Q))
+            Hoverable.TogglePopups();
         if (Input.GetKeyDown(KeyCode.Escape))
             SetCursorLock(false);
         if (Input.GetMouseButtonDown(1))
@@ -48,8 +50,29 @@ public class CameraController : MonoBehaviour
         _targetVelocity = transform.TransformDirection(input) * speed;
         _velocity = Vector3.Lerp(_velocity, _targetVelocity, smoothTime / Time.deltaTime * 10f);
         transform.position += _velocity * Time.deltaTime;
+
+        HandleRay();
     }
 
+    void HandleRay()
+    {
+        Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        RaycastHit hit;
+
+        if (Physics.Raycast(ray, out hit))
+        {
+            Hoverable hoverable = hit.collider.GetComponent<Hoverable>();
+            if (hoverable != null)
+            {
+                Debug.Log("Something hit");
+                hoverable.ShowUI();
+                return;
+            }
+        }
+
+        // nothing hit (or hit something without Hoverable) — hide all
+        Hoverable.HideAll();
+    }
     void SetCursorLock(bool locked)
     {
         _cursorLocked = locked;

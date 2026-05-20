@@ -1,0 +1,6 @@
+{
+  "broker": "80.113.118.200",
+  "port": 1883,
+  "username": "myuser",
+  "password": "cblbroker123"
+}

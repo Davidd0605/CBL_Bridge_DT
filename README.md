@@ -15,7 +15,7 @@ This is the repository for the software side of the 4CBLW026 Digital Twins of De
 
 ```
 
-## 3. Unity - M2Mqtt DLL
+## 3. Unity (6000.4.0f1) - M2Mqtt DLL
 1. Go to https://www.nuget.org/packages/M2Mqtt/
 2. Click **Download package** → downloads a `.nupkg` file
 3. Rename `.nupkg` to `.zip` and open it

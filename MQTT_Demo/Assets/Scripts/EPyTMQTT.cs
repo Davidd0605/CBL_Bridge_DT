@@ -46,7 +46,6 @@ public class EPyTMQTT : MonoBehaviour
         if (Input.GetMouseButtonDown(0))
         {
             client.Publish("my/topic", Encoding.UTF8.GetBytes("hello from Unity"), 1, false);
-            Debug.Log("Published: hello from Unity");
         }
     }
 

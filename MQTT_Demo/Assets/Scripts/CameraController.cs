@@ -64,7 +64,6 @@ public class CameraController : MonoBehaviour
             Hoverable hoverable = hit.collider.GetComponent<Hoverable>();
             if (hoverable != null)
             {
-                Debug.Log("Something hit");
                 hoverable.ShowUI();
                 return;
             }

@@ -6,6 +6,8 @@ from tkinter import ttk
 
 import openseespy.opensees as ops
 
+from bridge_mqtt import BridgeMQTTPublisher
+
 
 class BridgeLoadApp:
     def __init__(self, root):
@@ -42,6 +44,8 @@ class BridgeLoadApp:
         self.support_reactions = {}
         self.model_warnings = []
         self.model_errors = []
+        self.mqtt = BridgeMQTTPublisher()
+        self._geometry_published = False
         self.analysis_completed = False
         self.dead_load_displacements = {}
         self.total_self_weight_n = 0.0
@@ -119,16 +123,30 @@ class BridgeLoadApp:
         self.sensor_label.pack(fill="x", padx=10, pady=(0, 10))
 
         self.root.bind("<space>", self.on_space_key)
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
 
         self._sync_load_combo()
         if self._solve_current_loads() == 0:
             self.info_label.config(text=self._info_message("Model ready."))
         self._draw_bridge()
         self._update_status()
+        self._publish_mqtt()
 
     def _load_bridge(self, path):
         with path.open("r", encoding="utf-8") as bridge_file:
             return json.load(bridge_file)
+
+    def _publish_mqtt(self):
+        if not self.mqtt.enabled:
+            return
+        if not self._geometry_published:
+            if self.mqtt.publish_geometry(self):
+                self._geometry_published = True
+        self.mqtt.publish_state(self)
+
+    def _on_close(self):
+        self.mqtt.disconnect()
+        self.root.destroy()
 
     def _load_point_choices(self):
         return [f"{item['label']} (node {int(item['node'])})" for item in self.load_points]
@@ -829,13 +847,16 @@ class BridgeLoadApp:
         )
 
     def _info_message(self, prefix):
+        message = prefix
         if self.model_warnings:
             shown = "; ".join(self.model_warnings[:2])
             remaining = len(self.model_warnings) - 2
             if remaining > 0:
                 shown += f"; +{remaining} more default-property warnings"
-            return f"{prefix} {shown}"
-        return prefix
+            message = f"{message} {shown}"
+        if self.mqtt.enabled or self.mqtt._last_error:
+            message = f"{message} | {self.mqtt.status_message}"
+        return message
 
     def apply_load_step(self):
         if not self._refresh_force_from_entry():
@@ -946,6 +967,7 @@ class BridgeLoadApp:
                 self.current_lambda = self._total_applied_load() / self.reference_load_n
             self._collect_element_results()
             self._collect_support_reactions()
+            self._publish_mqtt()
         return ok
 
     def _capture_dead_load_baseline(self):

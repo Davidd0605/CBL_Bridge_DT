@@ -10,28 +10,22 @@ class MQTTClient:
     """
     Simple wrapper for publishing and subscribing on the python side of the system
     Here you have a little demo:
-
             broker = MQTTClient().connect()
-
             # publish
             broker.publish("sensors/temperature", {"value": 23.5, "unit": "C"})
-
             # subscribe
             def on_temperature(topic, payload):
                 print(f"Got temperature: {payload['value']}")
-
             broker.subscribe("sensors/temperature", on_temperature)
             broker.subscribe("sensors/#", lambda topic, payload: print(f"{topic}: {payload}"))
-
     This auto serializez/deserializez json.
-
     """
 
     def __init__(self):
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.client.username_pw_set(os.getenv("MQTT_USERNAME"), os.getenv("MQTT_PASSWORD"))
         self.client.on_message = self._on_message
-        self._handlers = {}  # topic -> callback
+        self._handlers = {}  # topic -> list of callbacks
 
     def connect(self):
         self.client.connect(os.getenv("MQTT_BROKER"), int(os.getenv("MQTT_PORT", 1883)))
@@ -49,8 +43,10 @@ class MQTTClient:
 
     def subscribe(self, topic: str, callback):
         """callback receives (topic, payload) where payload is auto-parsed if JSON"""
-        self._handlers[topic] = callback
-        self.client.subscribe(topic)
+        if topic not in self._handlers:
+            self._handlers[topic] = []
+            self.client.subscribe(topic)  # only subscribe to broker once per topic
+        self._handlers[topic].append(callback)
 
     def _on_message(self, client, userdata, msg):
         topic = msg.topic
@@ -59,12 +55,9 @@ class MQTTClient:
         except (json.JSONDecodeError, UnicodeDecodeError):
             payload = msg.payload.decode()
 
-        # exact match first, then wildcard handlers
-        if topic in self._handlers:
-            self._handlers[topic](topic, payload)
-        else:
-            for pattern, callback in self._handlers.items():
-                if self._matches(pattern, topic):
+        for pattern, callbacks in self._handlers.items():
+            if pattern == topic or self._matches(pattern, topic):
+                for callback in callbacks:
                     callback(topic, payload)
 
     def _matches(self, pattern: str, topic: str) -> bool:

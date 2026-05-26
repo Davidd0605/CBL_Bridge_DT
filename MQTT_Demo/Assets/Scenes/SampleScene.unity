@@ -798,7 +798,7 @@ Transform:
   m_GameObject: {fileID: 1361675289}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -0, y: -0, z: -0}
+  m_LocalPosition: {x: -0, y: 1.49, z: -0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -817,6 +817,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BridgeBuilder
   bridgeJson: {fileID: 4900000, guid: 9112730b3f90bc84d89d8ea8cc4fe612, type: 3}
+  realTopicPrefix: real
+  simTopicPrefix: simulation
+  simBridgeOffset: {x: 0, y: 0, z: 0}
   worldScale: 30
   beamRadius: 0.045
   nodeRadius: 0.09
@@ -832,54 +835,12 @@ MonoBehaviour:
   colNode: {r: 1, g: 1, b: 1, a: 1}
   colSupport: {r: 1, g: 0, b: 0, a: 1}
   colSensor: {r: 0, g: 1, b: 1, a: 1}
+  simAlpha: 0.35
+  simTint: {r: 0.7, g: 0.9, b: 1, a: 1}
   colOk: {r: 0.1, g: 0.9, b: 0.4, a: 1}
   colWarning: {r: 1, g: 0.65, b: 0, a: 1}
   colOverloaded: {r: 0.95, g: 0.1, b: 0.1, a: 1}
   baseMaterial: {fileID: 0}
---- !u!1 &1578827238
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1578827239}
-  - component: {fileID: 1578827240}
-  m_Layer: 0
-  m_Name: Debugger
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1578827239
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1578827238}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1578827240
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1578827238}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: dae0b01242779eb4495361bebb2300b2, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: Assembly-CSharp::EPyTMQTT
 --- !u!1 &1812227554 stripped
 GameObject:
   m_CorrespondingSourceObject: {fileID: 6606654139119599709, guid: ba949d398a8547145aea6bbb26bea1ef, type: 3}
@@ -993,7 +954,6 @@ SceneRoots:
   m_Roots:
   - {fileID: 330585546}
   - {fileID: 832575519}
-  - {fileID: 1578827239}
   - {fileID: 149873461}
   - {fileID: 1361675290}
   - {fileID: 748698981}

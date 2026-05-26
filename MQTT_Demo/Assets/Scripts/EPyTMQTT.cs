@@ -42,7 +42,6 @@ public class EPyTMQTT : MonoBehaviour
     {
         string msg = null;
         lock (msgLock) { msg = latestMessage; latestMessage = null; }
-        if (msg != null) Debug.Log("Received: " + msg);
         if (Input.GetMouseButtonDown(0))
         {
             client.Publish("my/topic", Encoding.UTF8.GetBytes("hello from Unity"), 1, false);

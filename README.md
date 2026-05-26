@@ -59,3 +59,39 @@ To avoid merge conflicts, **all Unity contributions must be made on separate sce
 - Do **not** edit another contributor's scene directly.
 - Shared prefabs and scripts in `Assets/Scripts/` and `Assets/Prefabs/` are fair game for everyone, but coordinate before making breaking changes to shared components.
 - When a feature is ready to be integrated into the main scene, do it together to avoid conflicts.
+
+---
+
+## 5. MQTT messages published by Python
+The Python bridge app publishes two JSON MQTT messages:
+
+1. `cbl/bridge/geometry` (retained)
+   - `type`: `geometry`
+   - `timestamp`: Unix epoch time
+   - `bridge_name`: model name from `bridge_3d_pratt.json`
+   - `nodes`: list of node coordinates (`id`, `label`, `x`, `y`, `z`)
+   - `elements`: list of element connectivity (`id`, `i`, `j`, `type`)
+   - `supports`: support node definitions
+   - `deflection_sensor_points`: sensor nodes used for deflection readout
+
+2. `cbl/bridge/state`
+   - `type`: `state`
+   - `timestamp`: Unix epoch time
+   - `analysis_completed`: whether the current static analysis finished
+   - `selected_load_node`: currently active load node
+   - `live_load_n`: total applied live load in newtons
+   - `self_weight_n`: self-weight load in newtonslive loads per node
+   - `node_loads`: applied 
+   - `visual_defo_scale`: display scaling factor for deformations
+   - `node_ids`, `disp_x`, `disp_y`, `disp_z`: per-node displacement values published as arrays
+   - `element_ids`, `utilization`, `axial_strain`, `bending_strain`, `combined_strain`: per-element beam/element results
+   - `sensor_readings`: per-sensor node deflection values including live and total vertical displacement
+
+### What is calculated
+- Node deformations are node-based displacements, published as `disp_x`, `disp_y`, and `disp_z` for each node.
+- Strains are calculated per-element and published as element-level `axial_strain`, `bending_strain`, and `combined_strain` values.
+- Sensor readouts are taken from the bridge model sensor points and include both live-load delta and total vertical displacement when available.
+
+### Notes
+- Geometry is sent once and retained, so Unity can rebuild the bridge model from node and element data.
+- State updates are sent continuously while the model is active and the MQTT publisher is enabled.

@@ -188,4 +188,15 @@ public class MQTTClient : MonoBehaviour
         }
         return pp.Length == tp.Length;
     }
+
+    /// <summary>
+    /// Exposes whether the underlying M2Mqtt client is currently connected to the broker.
+    /// </summary>
+    public bool IsConnected
+    {
+        get
+        {
+            return _client != null && _client.IsConnected;
+        }
+    }
 }

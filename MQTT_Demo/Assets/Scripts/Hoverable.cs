@@ -3,56 +3,89 @@ using TMPro;
 
 public class Hoverable : MonoBehaviour
 {
-    public GameObject uiInstance;
-    public Vector3 uiOffset = new Vector3(0f, 0.1f, 0f);
+    public Vector3 uiOffset = new Vector3(0f, 0.5f, 0f);
 
-    private TextMeshProUGUI tmp;
-    private static Hoverable _current;
+    private GameObject _uiInstance;
+    private Canvas _uiCanvas;
+    private TextMeshProUGUI _telemetryTextComponent;
 
-    public void Init(GameObject ui, string text)
+    private string _baseMetadata = "";
+    private string _liveTelemetry = "";
+
+    // Controlled EXCLUSIVELY by your UI Button now
+    private static bool _globalPopupsEnabled = true;
+
+    public static void SetGlobalVisibility(bool isEnabled)
     {
-        uiInstance = ui;
-        tmp = uiInstance.GetComponentInChildren<TextMeshProUGUI>();
-        if (tmp != null)
-            tmp.text = text;
-        uiInstance.SetActive(false);
+        _globalPopupsEnabled = isEnabled;
+    }
+
+    public void Init(GameObject uiPrefabAsset, string baseMetadataText)
+    {
+        _uiInstance = uiPrefabAsset;
+        _baseMetadata = baseMetadataText;
+
+        if (_uiInstance != null)
+        {
+            _uiCanvas = _uiInstance.GetComponent<Canvas>();
+            _telemetryTextComponent = _uiInstance.GetComponentInChildren<TextMeshProUGUI>();
+
+            if (_uiCanvas != null) _uiCanvas.enabled = false;
+
+            UpdateVisualText();
+        }
+    }
+
+    public void UpdateLiveTelemetry(string telemetryText)
+    {
+        _liveTelemetry = telemetryText;
+
+        // If the UI button turned things off, block live data from overriding it
+        if (!_globalPopupsEnabled)
+        {
+            HideUI();
+            return;
+        }
+
+        UpdateVisualText();
+    }
+
+    private void UpdateVisualText()
+    {
+        if (_telemetryTextComponent == null) return;
+
+        if (string.IsNullOrEmpty(_liveTelemetry))
+            _telemetryTextComponent.text = _baseMetadata;
+        else
+            _telemetryTextComponent.text = $"{_baseMetadata}\n\n{_liveTelemetry}";
+    }
+
+    void Update()
+    {
+        if (_uiInstance != null && _uiCanvas != null && _uiCanvas.enabled)
+        {
+            _uiInstance.transform.position = transform.position + uiOffset;
+            _uiInstance.transform.rotation = Camera.main.transform.rotation;
+        }
     }
 
     public void ShowUI()
     {
-        if (!_popupsEnabled) return;
-        if (_current != null && _current != this)
-            _current.HideUI();
-
-        _current = this;
-
-        if (uiInstance != null)
-        {
-            uiInstance.transform.position = transform.position + uiOffset;
-            uiInstance.transform.rotation = Camera.main.transform.rotation;
-            uiInstance.SetActive(true);
-        }
+        if (!_globalPopupsEnabled) return;
+        if (_uiCanvas != null) _uiCanvas.enabled = true;
     }
-    private static bool _popupsEnabled = true;
 
-    public static void TogglePopups()
-    {
-        _popupsEnabled = !_popupsEnabled;
-        if (!_popupsEnabled)
-            HideAll();
-    }
     public void HideUI()
     {
-        if (uiInstance != null)
-            uiInstance.SetActive(false);
+        if (_uiCanvas != null) _uiCanvas.enabled = false;
     }
 
     public static void HideAll()
     {
-        if (_current != null)
+        var hovers = FindObjectsByType<Hoverable>(FindObjectsSortMode.None);
+        foreach (var h in hovers)
         {
-            _current.HideUI();
-            _current = null;
+            h.HideUI();
         }
     }
 }

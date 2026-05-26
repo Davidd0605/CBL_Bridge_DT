@@ -26,8 +26,8 @@ DEFAULT_HOST = "80.113.118.200"
 DEFAULT_PORT = 1883
 DEFAULT_USERNAME = "myuser"
 DEFAULT_PASSWORD = "cblbroker123"
-TOPIC_GEOMETRY = "cbl/bridge/geometry"
-TOPIC_STATE = "cbl/bridge/state"
+TOPIC_GEOMETRY = "cbl/bridge/sim/geometry"
+TOPIC_STATE = "cbl/bridge/sim/state"
 
 
 def _node_position(node: dict) -> tuple[float, float, float]:
@@ -53,15 +53,8 @@ class BridgeMQTTPublisher:
         password: str | None = None,
         enabled: bool | None = None,
     ):
-        self.host = (
-            host
-            or os.environ.get("MQTT_BROKER_HOST")
-            or os.environ.get("MQTT_BROKER")
-            or DEFAULT_HOST
-        )
-        self.port = int(
-            port or os.environ.get("MQTT_BROKER_PORT") or os.environ.get("MQTT_PORT", DEFAULT_PORT)
-        )
+        self.host = host or os.environ.get("MQTT_BROKER_HOST") or os.environ.get("MQTT_BROKER") or DEFAULT_HOST
+        self.port = int(port or os.environ.get("MQTT_BROKER_PORT") or os.environ.get("MQTT_PORT", DEFAULT_PORT))
         self.username = username or os.environ.get("MQTT_USERNAME", DEFAULT_USERNAME)
         self.password = password or os.environ.get("MQTT_PASSWORD", DEFAULT_PASSWORD)
         self.enabled = (
@@ -143,10 +136,7 @@ class BridgeMQTTPublisher:
                 }
                 for element in app.elements
             ],
-            "supports": [
-                {"node": int(support["node"]), "label": support.get("label", "")}
-                for support in app.supports
-            ],
+            "supports": [{"node": int(support["node"]), "label": support.get("label", "")} for support in app.supports],
             "deflection_sensor_points": app.sensor_points,
         }
         return self._publish(TOPIC_GEOMETRY, payload, retain=True)

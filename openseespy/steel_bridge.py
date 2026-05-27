@@ -58,6 +58,7 @@ class Bridge3DLoadApp:
         self.model_warnings = []
         self.mqtt = BridgeMQTTPublisher()
         self._geometry_published = False
+        self.damage_overrides = {}
 
         self.defo_scale = 250.0
         self.visual_defo_scale = self.defo_scale
@@ -256,12 +257,13 @@ class Bridge3DLoadApp:
         depth = float(element.get("depth", depth))
         section_modulus = max(iy, iz) / max(depth / 2.0, 1e-9)
 
+
         if area <= 0.0 or elastic_modulus <= 0.0 or iy <= 0.0 or iz <= 0.0:
             raise ValueError(f"Element {element['id']} has invalid section properties.")
         if density < 0.0 or yield_stress <= 0.0:
             raise ValueError(f"Element {element['id']} has invalid material properties.")
 
-        return {
+        section = {
             "profile": profile_name,
             "A": area,
             "E": elastic_modulus,
@@ -273,6 +275,27 @@ class Bridge3DLoadApp:
             "density": density,
             "yield_stress": yield_stress,
         }
+
+        alpha = self.damage_overrides.get(element["id"])
+        if alpha is not None:
+            section["E"] = section["E"] * alpha
+            section["G"] = section["G"] * alpha
+
+        return section
+    
+    def set_damage(self, element_ids, alpha=0.80):
+        """
+        Adds damage to the members in the list element_ids
+            "element_ids    : list[int] : all members which should be damaged
+            "alpha          : float     : severity of the damage (0.80 means a 20% reduction in the stiffness)
+        """
+        self.damage_overrides = {ele_id: alpha for ele_id in element_ids}
+
+    def reset_damage(self):
+        """
+        Removes all damages and returns the model to the healthy state
+        """
+        self.damage_overrides = {}
 
     def _element_length(self, element):
         return self._distance(

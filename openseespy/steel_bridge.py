@@ -56,7 +56,7 @@ class Bridge3DLoadApp:
         self.analysis_completed = False
         self.model_errors = []
         self.model_warnings = []
-        self.mqtt = BridgeMQTTPublisher()
+        self.mqtt = BridgeMQTTPublisher(load_callback=self._on_mqtt_load)
         self._geometry_published = False
         self.damage_overrides = {}
 
@@ -155,6 +155,114 @@ class Bridge3DLoadApp:
             if self.mqtt.publish_geometry(self):
                 self._geometry_published = True
         self.mqtt.publish_state(self)
+
+    def _on_mqtt_load(self, payload):
+        self.root.after(0, self._apply_mqtt_load_payload, payload)
+
+    def _apply_mqtt_load_payload(self, payload):
+        try:
+            node_loads, selected_node = self._parse_mqtt_load_payload(payload)
+        except ValueError as exc:
+            self.mqtt._last_error = f"load message error: {exc}"
+            self._update_status()
+            return
+
+        previous_loads = dict(self.node_loads)
+        previous_selected_node = self.selected_load_node
+        self.node_loads = node_loads
+        if selected_node is not None:
+            self.selected_load_node = selected_node
+            self._sync_load_combo()
+
+        ok = self._solve_current_loads()
+        if ok != 0:
+            self.node_loads = previous_loads
+            self.selected_load_node = previous_selected_node
+            self._sync_load_combo()
+            self._solve_current_loads()
+            self.info_label.config(text="MQTT load rejected: analysis failed.")
+            return
+
+        self.info_label.config(
+            text=self._info_message(
+                f"MQTT load applied: {self._total_applied_load():.1f} N total."
+            )
+        )
+        self._draw_bridge()
+        self._update_status()
+
+    def _parse_mqtt_load_payload(self, payload):
+        if not isinstance(payload, dict):
+            raise ValueError("payload must be a JSON object")
+
+        if "node_loads" in payload:
+            node_loads = self._parse_mqtt_node_loads(payload["node_loads"])
+            selected_node = self._mqtt_selected_node(payload, node_loads)
+            return node_loads, selected_node
+
+        if "loads" in payload:
+            node_loads = self._parse_mqtt_node_loads(payload["loads"])
+            selected_node = self._mqtt_selected_node(payload, node_loads)
+            return node_loads, selected_node
+
+        if "node" not in payload:
+            raise ValueError("expected 'node' with 'load_n', or 'node_loads'")
+        node = self._validated_load_node(payload["node"])
+        load = self._mqtt_load_value(payload)
+        return ({node: load} if load > 0.0 else {}, node)
+
+    def _parse_mqtt_node_loads(self, raw_loads):
+        parsed = {}
+        if isinstance(raw_loads, dict):
+            iterable = raw_loads.items()
+        elif isinstance(raw_loads, list):
+            iterable = (
+                (item.get("node"), self._mqtt_load_value(item))
+                for item in raw_loads
+                if isinstance(item, dict)
+            )
+        else:
+            raise ValueError("'node_loads' must be an object or list")
+
+        for raw_node, raw_load in iterable:
+            node = self._validated_load_node(raw_node)
+            load = self._validated_mqtt_load(raw_load)
+            if load > 0.0:
+                parsed[node] = load
+        return parsed
+
+    def _mqtt_selected_node(self, payload, node_loads):
+        if "selected_load_node" in payload:
+            return self._validated_load_node(payload["selected_load_node"])
+        if "node" in payload:
+            return self._validated_load_node(payload["node"])
+        if node_loads:
+            return next(iter(node_loads))
+        return None
+
+    def _mqtt_load_value(self, payload):
+        for key in ("load_n", "force_n", "weight_n", "load"):
+            if key in payload:
+                return self._validated_mqtt_load(payload[key])
+        raise ValueError("expected load value key 'load_n'")
+
+    def _validated_load_node(self, raw_node):
+        try:
+            node = int(raw_node)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"invalid load node {raw_node!r}") from exc
+        if node not in self.node_coords:
+            raise ValueError(f"unknown load node {node}")
+        return node
+
+    def _validated_mqtt_load(self, raw_load):
+        try:
+            load = float(raw_load)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"invalid load value {raw_load!r}") from exc
+        if load < 0.0:
+            raise ValueError("load must be zero or positive")
+        return load
 
     def _on_close(self):
         self.mqtt.disconnect()

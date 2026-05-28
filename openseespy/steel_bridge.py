@@ -43,7 +43,6 @@ class Bridge3DLoadApp:
         self.gravity = 9.80665
         self.poisson_ratio = 0.30
         self.include_self_weight = True
-        self.distribute_live_load = True
         self.reference_load_n = 100.0
         self.load_step = 0.1
         self.node_loads = {}
@@ -56,7 +55,7 @@ class Bridge3DLoadApp:
         self.analysis_completed = False
         self.model_errors = []
         self.model_warnings = []
-        self.mqtt = BridgeMQTTPublisher()
+        self.mqtt = BridgeMQTTPublisher(load_callback=self._on_mqtt_load)
         self._geometry_published = False
         self.damage_overrides = {}
 
@@ -155,6 +154,114 @@ class Bridge3DLoadApp:
             if self.mqtt.publish_geometry(self):
                 self._geometry_published = True
         self.mqtt.publish_state(self)
+
+    def _on_mqtt_load(self, payload):
+        self.root.after(0, self._apply_mqtt_load_payload, payload)
+
+    def _apply_mqtt_load_payload(self, payload):
+        try:
+            node_loads, selected_node = self._parse_mqtt_load_payload(payload)
+        except ValueError as exc:
+            self.mqtt._last_error = f"load message error: {exc}"
+            self._update_status()
+            return
+
+        previous_loads = dict(self.node_loads)
+        previous_selected_node = self.selected_load_node
+        self.node_loads = node_loads
+        if selected_node is not None:
+            self.selected_load_node = selected_node
+            self._sync_load_combo()
+
+        ok = self._solve_current_loads()
+        if ok != 0:
+            self.node_loads = previous_loads
+            self.selected_load_node = previous_selected_node
+            self._sync_load_combo()
+            self._solve_current_loads()
+            self.info_label.config(text="MQTT load rejected: analysis failed.")
+            return
+
+        self.info_label.config(
+            text=self._info_message(
+                f"MQTT load applied: {self._total_applied_load():.1f} N total."
+            )
+        )
+        self._draw_bridge()
+        self._update_status()
+
+    def _parse_mqtt_load_payload(self, payload):
+        if not isinstance(payload, dict):
+            raise ValueError("payload must be a JSON object")
+
+        if "node_loads" in payload:
+            node_loads = self._parse_mqtt_node_loads(payload["node_loads"])
+            selected_node = self._mqtt_selected_node(payload, node_loads)
+            return node_loads, selected_node
+
+        if "loads" in payload:
+            node_loads = self._parse_mqtt_node_loads(payload["loads"])
+            selected_node = self._mqtt_selected_node(payload, node_loads)
+            return node_loads, selected_node
+
+        if "node" not in payload:
+            raise ValueError("expected 'node' with 'load_n', or 'node_loads'")
+        node = self._validated_load_node(payload["node"])
+        load = self._mqtt_load_value(payload)
+        return ({node: load} if load > 0.0 else {}, node)
+
+    def _parse_mqtt_node_loads(self, raw_loads):
+        parsed = {}
+        if isinstance(raw_loads, dict):
+            iterable = raw_loads.items()
+        elif isinstance(raw_loads, list):
+            iterable = (
+                (item.get("node"), self._mqtt_load_value(item))
+                for item in raw_loads
+                if isinstance(item, dict)
+            )
+        else:
+            raise ValueError("'node_loads' must be an object or list")
+
+        for raw_node, raw_load in iterable:
+            node = self._validated_load_node(raw_node)
+            load = self._validated_mqtt_load(raw_load)
+            if load > 0.0:
+                parsed[node] = load
+        return parsed
+
+    def _mqtt_selected_node(self, payload, node_loads):
+        if "selected_load_node" in payload:
+            return self._validated_load_node(payload["selected_load_node"])
+        if "node" in payload:
+            return self._validated_load_node(payload["node"])
+        if node_loads:
+            return next(iter(node_loads))
+        return None
+
+    def _mqtt_load_value(self, payload):
+        for key in ("load_n", "force_n", "weight_n", "load"):
+            if key in payload:
+                return self._validated_mqtt_load(payload[key])
+        raise ValueError("expected load value key 'load_n'")
+
+    def _validated_load_node(self, raw_node):
+        try:
+            node = int(raw_node)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"invalid load node {raw_node!r}") from exc
+        if node not in self.node_coords:
+            raise ValueError(f"unknown load node {node}")
+        return node
+
+    def _validated_mqtt_load(self, raw_load):
+        try:
+            load = float(raw_load)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"invalid load value {raw_load!r}") from exc
+        if load < 0.0:
+            raise ValueError("load must be zero or positive")
+        return load
 
     def _on_close(self):
         self.mqtt.disconnect()
@@ -379,56 +486,11 @@ class Bridge3DLoadApp:
         return loads
 
     def _distributed_live_loads(self):
-        if not self.distribute_live_load:
-            return {
-                int(node): float(load)
-                for node, load in self.node_loads.items()
-                if load > 0.0
-            }
-        ordered_nodes = sorted(
-            {int(point["node"]) for point in self.load_points},
-            key=lambda node: self.node_coords[node][0],
-        )
-        if len(ordered_nodes) <= 1:
-            return {
-                int(node): float(load)
-                for node, load in self.node_loads.items()
-                if load > 0.0
-            }
-        distributed = {}
-        for selected_node, load in self.node_loads.items():
-            selected_node = int(selected_node)
-            load = float(load)
-            if load <= 0.0:
-                continue
-            if selected_node not in ordered_nodes:
-                distributed[selected_node] = distributed.get(selected_node, 0.0) + load
-                continue
-            index = ordered_nodes.index(selected_node)
-            left_node = ordered_nodes[index - 1] if index > 0 else None
-            right_node = (
-                ordered_nodes[index + 1]
-                if index < len(ordered_nodes) - 1
-                else None
-            )
-            if left_node is None or right_node is None:
-                neighbour = right_node if left_node is None else left_node
-                shares = {selected_node: 0.70, neighbour: 0.30}
-            else:
-                selected_x = self.node_coords[selected_node][0]
-                left_distance = max(selected_x - self.node_coords[left_node][0], 1e-9)
-                right_distance = max(
-                    self.node_coords[right_node][0] - selected_x, 1e-9
-                )
-                left_share = 0.50 * right_distance / (left_distance + right_distance)
-                shares = {
-                    selected_node: 0.50,
-                    left_node: left_share,
-                    right_node: 0.50 - left_share,
-                }
-            for node, share in shares.items():
-                distributed[node] = distributed.get(node, 0.0) + load * share
-        return distributed
+        return {
+            int(node): float(load)
+            for node, load in self.node_loads.items()
+            if load > 0.0
+        }
 
     def _build_model(self):
         ops.wipe()
@@ -554,13 +616,13 @@ class Bridge3DLoadApp:
             )
 
     def _draw_loads(self):
-        distributed = self._distributed_live_loads()
+        applied_loads = self._distributed_live_loads()
         requested = self._selected_node_load()
-        for node, load in distributed.items():
+        for node, load in applied_loads.items():
             label = f"{load:.1f} N"
             color = "#f97316" if node == self.selected_load_node else "#fb923c"
             if node == self.selected_load_node:
-                label = f"Requested {requested:.1f} N\nApplied {load:.1f} N"
+                label = f"Applied {load:.1f} N"
             self._draw_load_arrow(node, load, color, label)
         x, y = self.world_to_canvas(*self.node_coords[self.selected_load_node])
         self.canvas.create_oval(
@@ -741,15 +803,11 @@ class Bridge3DLoadApp:
         )
         live_uy = self._display_node_disp(self.selected_load_node)[1]
         active_load = self._selected_node_load()
-        active_distributed_load = self._distributed_live_loads().get(
-            self.selected_load_node, 0.0
-        )
         live_load = self._total_applied_load()
         total_load = live_load + self.total_self_weight_n
         self.status_label.config(
             text=(
-                f"Active node {self.selected_load_node}: requested {active_load:.1f} N, "
-                f"applied here {active_distributed_load:.1f} N | "
+                f"Active node {self.selected_load_node}: applied {active_load:.1f} N | "
                 f"Live: {live_load:.1f} N | Self-weight: {self.total_self_weight_n:.1f} N | "
                 f"Total vertical: {total_load:.1f} N | Uy live: {live_uy:.6e} m, "
                 f"total: {total_uy:.6e} m"

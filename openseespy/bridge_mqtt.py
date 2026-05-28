@@ -6,6 +6,7 @@ import json
 import os
 import time
 import uuid
+from typing import Callable
 
 try:
     from dotenv import load_dotenv
@@ -28,6 +29,7 @@ DEFAULT_USERNAME = "myuser"
 DEFAULT_PASSWORD = "cblbroker123"
 TOPIC_GEOMETRY = "cbl/bridge/sim/geometry"
 TOPIC_STATE = "cbl/bridge/sim/state"
+TOPIC_LOAD = "cbl/bridge/load"
 
 
 def _node_position(node: dict) -> tuple[float, float, float]:
@@ -52,6 +54,8 @@ class BridgeMQTTPublisher:
         username: str | None = None,
         password: str | None = None,
         enabled: bool | None = None,
+        load_callback: Callable[[dict], None] | None = None,
+        load_topic: str | None = None,
     ):
         self.host = host or os.environ.get("MQTT_BROKER_HOST") or os.environ.get("MQTT_BROKER") or DEFAULT_HOST
         self.port = int(port or os.environ.get("MQTT_BROKER_PORT") or os.environ.get("MQTT_PORT", DEFAULT_PORT))
@@ -62,6 +66,8 @@ class BridgeMQTTPublisher:
             if enabled is not None
             else os.environ.get("MQTT_ENABLED", "1").strip().lower() not in ("0", "false", "no")
         )
+        self.load_callback = load_callback
+        self.load_topic = load_topic or os.environ.get("MQTT_LOAD_TOPIC", TOPIC_LOAD)
         self._client = None
         self._connected = False
         self._last_error = None
@@ -88,10 +94,13 @@ class BridgeMQTTPublisher:
             mqtt.CallbackAPIVersion.VERSION2,
             client_id=client_id,
         )
+        self._client.on_message = self._on_message
         if self.username:
             self._client.username_pw_set(self.username, self.password or None)
         try:
             self._client.connect(self.host, self.port, keepalive=60)
+            if self.load_callback is not None:
+                self._client.subscribe(self.load_topic, qos=1)
             self._client.loop_start()
             self._connected = True
             self._last_error = None
@@ -110,6 +119,17 @@ class BridgeMQTTPublisher:
             pass
         self._client = None
         self._connected = False
+
+    def _on_message(self, _client, _userdata, message) -> None:
+        if self.load_callback is None or message.topic != self.load_topic:
+            return
+        try:
+            payload = json.loads(message.payload.decode("utf-8"))
+            if not isinstance(payload, dict):
+                raise ValueError("load payload must be a JSON object")
+            self.load_callback(payload)
+        except Exception as exc:  # noqa: BLE001 - keep MQTT thread alive
+            self._last_error = f"load message error: {exc}"
 
     def publish_geometry(self, app) -> bool:
         payload = {

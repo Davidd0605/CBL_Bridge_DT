@@ -43,7 +43,6 @@ class Bridge3DLoadApp:
         self.gravity = 9.80665
         self.poisson_ratio = 0.30
         self.include_self_weight = True
-        self.distribute_live_load = True
         self.reference_load_n = 100.0
         self.load_step = 0.1
         self.node_loads = {}
@@ -487,56 +486,11 @@ class Bridge3DLoadApp:
         return loads
 
     def _distributed_live_loads(self):
-        if not self.distribute_live_load:
-            return {
-                int(node): float(load)
-                for node, load in self.node_loads.items()
-                if load > 0.0
-            }
-        ordered_nodes = sorted(
-            {int(point["node"]) for point in self.load_points},
-            key=lambda node: self.node_coords[node][0],
-        )
-        if len(ordered_nodes) <= 1:
-            return {
-                int(node): float(load)
-                for node, load in self.node_loads.items()
-                if load > 0.0
-            }
-        distributed = {}
-        for selected_node, load in self.node_loads.items():
-            selected_node = int(selected_node)
-            load = float(load)
-            if load <= 0.0:
-                continue
-            if selected_node not in ordered_nodes:
-                distributed[selected_node] = distributed.get(selected_node, 0.0) + load
-                continue
-            index = ordered_nodes.index(selected_node)
-            left_node = ordered_nodes[index - 1] if index > 0 else None
-            right_node = (
-                ordered_nodes[index + 1]
-                if index < len(ordered_nodes) - 1
-                else None
-            )
-            if left_node is None or right_node is None:
-                neighbour = right_node if left_node is None else left_node
-                shares = {selected_node: 0.70, neighbour: 0.30}
-            else:
-                selected_x = self.node_coords[selected_node][0]
-                left_distance = max(selected_x - self.node_coords[left_node][0], 1e-9)
-                right_distance = max(
-                    self.node_coords[right_node][0] - selected_x, 1e-9
-                )
-                left_share = 0.50 * right_distance / (left_distance + right_distance)
-                shares = {
-                    selected_node: 0.50,
-                    left_node: left_share,
-                    right_node: 0.50 - left_share,
-                }
-            for node, share in shares.items():
-                distributed[node] = distributed.get(node, 0.0) + load * share
-        return distributed
+        return {
+            int(node): float(load)
+            for node, load in self.node_loads.items()
+            if load > 0.0
+        }
 
     def _build_model(self):
         ops.wipe()
@@ -662,13 +616,13 @@ class Bridge3DLoadApp:
             )
 
     def _draw_loads(self):
-        distributed = self._distributed_live_loads()
+        applied_loads = self._distributed_live_loads()
         requested = self._selected_node_load()
-        for node, load in distributed.items():
+        for node, load in applied_loads.items():
             label = f"{load:.1f} N"
             color = "#f97316" if node == self.selected_load_node else "#fb923c"
             if node == self.selected_load_node:
-                label = f"Requested {requested:.1f} N\nApplied {load:.1f} N"
+                label = f"Applied {load:.1f} N"
             self._draw_load_arrow(node, load, color, label)
         x, y = self.world_to_canvas(*self.node_coords[self.selected_load_node])
         self.canvas.create_oval(
@@ -849,15 +803,11 @@ class Bridge3DLoadApp:
         )
         live_uy = self._display_node_disp(self.selected_load_node)[1]
         active_load = self._selected_node_load()
-        active_distributed_load = self._distributed_live_loads().get(
-            self.selected_load_node, 0.0
-        )
         live_load = self._total_applied_load()
         total_load = live_load + self.total_self_weight_n
         self.status_label.config(
             text=(
-                f"Active node {self.selected_load_node}: requested {active_load:.1f} N, "
-                f"applied here {active_distributed_load:.1f} N | "
+                f"Active node {self.selected_load_node}: applied {active_load:.1f} N | "
                 f"Live: {live_load:.1f} N | Self-weight: {self.total_self_weight_n:.1f} N | "
                 f"Total vertical: {total_load:.1f} N | Uy live: {live_uy:.6e} m, "
                 f"total: {total_uy:.6e} m"

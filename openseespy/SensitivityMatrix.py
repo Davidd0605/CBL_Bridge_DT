@@ -132,6 +132,10 @@ class SensitivityMatrix:
             for j in range(n_scenarios)
         ]
 
+        combined_nrmse_scores = [
+            mac_scores[j] / (1.0 + mac_weight * nrmse_errors[j])
+            for j in range(n_scenarios)
+        ]
 
         #Rank by ascending combined ortho score (higher score = more likely damage location).
         ranked_ortho_indices = sorted(range(n_scenarios), key=lambda j: combined_ortho_scores[j], reverse=True)
@@ -142,8 +146,8 @@ class SensitivityMatrix:
         best_ortho_ortho = ortho_scores[best_ortho_idx]
 
 
-        #Rank by descending combined NRMSE (lower score = more likely damage location).
-        ranked_nrmse_indices = sorted(range(n_scenarios), key=lambda j: nrmse_errors[j])
+        #Rank by ascending combined NRMSE (higher score = more likely damage location).
+        ranked_nrmse_indices = sorted(range(n_scenarios), key=lambda j: combined_nrmse_scores[j], reverse=True)
         best_nrmse_idx       = ranked_nrmse_indices[0]
         best_nrmse_scenario  = self.damage_scenarios[best_nrmse_idx]
         #ranking_nrmse = [self.damage_scenarios[j] for j in ranked_nrmse_indices]

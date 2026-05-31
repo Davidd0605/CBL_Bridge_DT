@@ -11,6 +11,8 @@ class SensitivityMatrix:
         self.damage_scenarios = []
         self.S = None
         self.Error = None
+        self.MAC = None
+        self.OrthoError = None
 
     def define_gauges(self, gauge_definitions):
         """
@@ -39,7 +41,7 @@ class SensitivityMatrix:
         Reads the combined strain from one specified gauge in the model using _collect_element_results()
         """
         ele_id = gauge['ele_id']
-        result = self.app.element_result.get(ele_id)
+        result = self.app.element_results.get(ele_id)
 
         if result is None:
             raise ValueError(f"Element {ele_id} is not found in element_results."
@@ -51,13 +53,13 @@ class SensitivityMatrix:
         """
         Reads all gauges in the current solved state and makes an array with the readings
         """
-        return np.ndarray([self._read_gauge(j) for j in self.gauge_definitions])
+        return np.array([self._read_gauge(j) for j in self.gauge_definitions])
     
     def _run_damaged(self, scenario):
         """
         Runs the model for a damage scenario, returns the array of the strain measurements of all gauges.
         """
-        self.app.damage_overrides = {ele_id: scenario['alpha'] for ele_id in scenario['element_ids']}
+        self.app.set_damage(scenario['element_ids'], alpha=scenario['alpha'])
         ok = self.app._solve_current_loads()
         if ok != 0:
             self.app.damage_overrides = {}
@@ -70,12 +72,14 @@ class SensitivityMatrix:
     
     def _build_sensitivity(self, measured_strain, verbose=True):
         """
+        Builds the sensitivity matrix S, and computes the error, MAC, and orthogonality metrics for each damage scenario compared to the measured strain from the prototype.
         """
         n_gauges    = len(self.gauge_definitions)
         n_scenarios = len(self.damage_scenarios)
 
         S = np.zeros((n_gauges, n_scenarios))
         Error = np.zeros((n_gauges, n_scenarios))
+        OrthoError = np.zeros((1, n_scenarios))
         MAC = np.zeros((1, n_scenarios))
 
         for j, scenario in enumerate(self.damage_scenarios):
@@ -91,17 +95,80 @@ class SensitivityMatrix:
             Error[:,j] = (
                 (strain_damaged - measured_strain)
                 / (np.abs(measured_strain) + 1e-12)) #Gives percentage difference with measured prototype
-            norm_product = np.linalg.norm(measured_strain) * np.linalg.norm(strain_damaged)
-            MAC[1,j] = (float(np.abs(np.dot(strain_damaged, measured_strain))^2/norm_product) if norm_product > 1e-12 else 0.0)
+            denom = (np.dot(measured_strain, measured_strain) * np.dot(strain_damaged, strain_damaged) + 1e-12)
+            MAC[0,j] = (float(np.abs(np.dot(strain_damaged, measured_strain))**2/denom) if denom > 1e-12 else 0.0)
+
+            s_dot_m = float(np.dot(strain_damaged, measured_strain))
+            s_parallel = (s_dot_m / (np.dot(measured_strain, measured_strain) + 1e-24)) * measured_strain
+            r = strain_damaged - s_parallel
+            OrthoError[0, j] = float(np.linalg.norm(r)) / (float(np.linalg.norm(measured_strain)) + 1e-24)
         
-        return S, Error, MAC
-            
-            
-
-
+        self.S = S
+        self.Error = Error
+        self.MAC = MAC
+        self.OrthoError = OrthoError
+        return S, Error, MAC, OrthoError
     
+    def detect(self, mac_weight= 10.0):
+        """
+        mac_weight : float
+            A weighting factor to balance the importance of MAC vs orthogonality or rmse in their combined scores.
+        Uses two different combined scoring approaches to rank the damage scenarios, one based on MAC and orthogonality, and another based on MAC and RMSE.
+        returns a dict with the best scenarios according to both combined scores, and whether they agree on the same scenario.
+        """
+        if self.Error is None:
+            raise RuntimeError("Call _build_sensitivity() before detect().")
+ 
+        n_scenarios = len(self.damage_scenarios)
+        rmse_errors = [
+            float(np.sqrt(np.mean(self.Error[:, j] ** 2)))
+            for j in range(n_scenarios)
+        ]
+        mac_scores = [float(self.MAC[0, j]) for j in range(n_scenarios)]
+        ortho_scores = [float(self.OrthoError[0, j]) for j in range(n_scenarios)]
+
+        combined_ortho_scores = [
+            mac_scores[j] / (1.0 + mac_weight * ortho_scores[j])
+            for j in range(n_scenarios)
+        ]
+
+        combined_rmse_scores = [
+            mac_scores[j] / (1.0 + mac_weight * rmse_errors[j])
+            for j in range(n_scenarios)
+        ]
+
+        #Rank by ascending combined ortho score (higher score = more likely damage location).
+        ranked_ortho_indices = sorted(range(n_scenarios), key=lambda j: combined_ortho_scores[j], reverse=True)
+        best_ortho_idx       = ranked_ortho_indices[0]
+        best_ortho_scenario  = self.damage_scenarios[best_ortho_idx]
+        #ranking_ortho = [self.damage_scenarios[j] for j in ranked_ortho_indices]
+        best_ortho_mac = mac_scores[best_ortho_idx]
+        best_ortho_ortho = ortho_scores[best_ortho_idx]
+
+
+        #Rank by ascending combined RMSE (higher score = more likely damage location).
+        ranked_rmse_indices = sorted(range(n_scenarios), key=lambda j: combined_rmse_scores[j], reverse=True)
+        best_rmse_idx       = ranked_rmse_indices[0]
+        best_rmse_scenario  = self.damage_scenarios[best_rmse_idx]
+        #ranking_rmse = [self.damage_scenarios[j] for j in ranked_rmse_indices]
+        best_rmse_mac = mac_scores[best_rmse_idx]
+        best_rmse_rmse = rmse_errors[best_rmse_idx]
+
+        agreement = (best_ortho_idx == best_rmse_idx)
+
+        return{
+
+            'best_ortho': {
+                'scenario': best_ortho_scenario,
+                'MAC': best_ortho_mac,
+                'OrthoError': best_ortho_ortho
+            },
+            'best_rmse': {
+                'scenario': best_rmse_scenario,
+                'MAC': best_rmse_mac,
+                'RMSE_Error': best_rmse_rmse
+            },
+            'agreement': agreement
+        }
 
         
-    
-
-

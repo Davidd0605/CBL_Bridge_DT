@@ -92,9 +92,8 @@ class SensitivityMatrix:
             strain_damaged = self._run_damaged(scenario)
 
             S[:,j] = strain_damaged
-            Error[:,j] = (
-                (strain_damaged - measured_strain)
-                / (np.abs(measured_strain) + 1e-12)) #Gives percentage difference with measured prototype
+            Error[:,j] = (strain_damaged - measured_strain)
+                
             denom = (np.dot(measured_strain, measured_strain) * np.dot(strain_damaged, strain_damaged) + 1e-12)
             MAC[0,j] = (float(np.abs(np.dot(strain_damaged, measured_strain))**2/denom) if denom > 1e-12 else 0.0)
 
@@ -103,6 +102,7 @@ class SensitivityMatrix:
             r = strain_damaged - s_parallel
             OrthoError[0, j] = float(np.linalg.norm(r)) / (float(np.linalg.norm(measured_strain)) + 1e-24)
         
+        self.measured_strain = measured_strain
         self.S = S
         self.Error = Error
         self.MAC = MAC
@@ -120,8 +120,8 @@ class SensitivityMatrix:
             raise RuntimeError("Call _build_sensitivity() before detect().")
  
         n_scenarios = len(self.damage_scenarios)
-        rmse_errors = [
-            float(np.sqrt(np.mean(self.Error[:, j] ** 2)))
+        nrmse_errors = [
+            float(np.sqrt(np.mean(self.Error[:, j] ** 2)))/float(np.mean(np.abs(self.measured_strain))+1e-24)
             for j in range(n_scenarios)
         ]
         mac_scores = [float(self.MAC[0, j]) for j in range(n_scenarios)]
@@ -132,8 +132,8 @@ class SensitivityMatrix:
             for j in range(n_scenarios)
         ]
 
-        combined_rmse_scores = [
-            mac_scores[j] / (1.0 + mac_weight * rmse_errors[j])
+        combined_nrmse_scores = [
+            mac_scores[j] / (1.0 + mac_weight * nrmse_errors[j])
             for j in range(n_scenarios)
         ]
 
@@ -146,15 +146,15 @@ class SensitivityMatrix:
         best_ortho_ortho = ortho_scores[best_ortho_idx]
 
 
-        #Rank by ascending combined RMSE (higher score = more likely damage location).
-        ranked_rmse_indices = sorted(range(n_scenarios), key=lambda j: combined_rmse_scores[j], reverse=True)
-        best_rmse_idx       = ranked_rmse_indices[0]
-        best_rmse_scenario  = self.damage_scenarios[best_rmse_idx]
-        #ranking_rmse = [self.damage_scenarios[j] for j in ranked_rmse_indices]
-        best_rmse_mac = mac_scores[best_rmse_idx]
-        best_rmse_rmse = rmse_errors[best_rmse_idx]
+        #Rank by ascending combined NRMSE (higher score = more likely damage location).
+        ranked_nrmse_indices = sorted(range(n_scenarios), key=lambda j: combined_nrmse_scores[j], reverse=True)
+        best_nrmse_idx       = ranked_nrmse_indices[0]
+        best_nrmse_scenario  = self.damage_scenarios[best_nrmse_idx]
+        #ranking_nrmse = [self.damage_scenarios[j] for j in ranked_nrmse_indices]
+        best_nrmse_mac = mac_scores[best_nrmse_idx]
+        best_nrmse_nrmse = nrmse_errors[best_nrmse_idx]
 
-        agreement = (best_ortho_idx == best_rmse_idx)
+        agreement = (best_ortho_idx == best_nrmse_idx)
 
         return{
 
@@ -163,10 +163,10 @@ class SensitivityMatrix:
                 'MAC': best_ortho_mac,
                 'OrthoError': best_ortho_ortho
             },
-            'best_rmse': {
-                'scenario': best_rmse_scenario,
-                'MAC': best_rmse_mac,
-                'RMSE_Error': best_rmse_rmse
+            'best_nrmse': {
+                'scenario': best_nrmse_scenario,
+                'MAC': best_nrmse_mac,
+                'NRMSE_Error': best_nrmse_nrmse
             },
             'agreement': agreement
         }

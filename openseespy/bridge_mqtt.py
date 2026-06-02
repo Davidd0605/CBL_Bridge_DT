@@ -30,6 +30,8 @@ DEFAULT_PASSWORD = "cblbroker123"
 TOPIC_GEOMETRY = "cbl/bridge/sim/geometry"
 TOPIC_STATE = "cbl/bridge/sim/state"
 TOPIC_LOAD = "cbl/bridge/load"
+TOPIC_COMMAND = "cbl/bridge/command"
+TOPIC_REAL_STATE = "cbl/bridge/real/state"
 
 
 def _node_position(node: dict) -> tuple[float, float, float]:
@@ -56,6 +58,10 @@ class BridgeMQTTPublisher:
         enabled: bool | None = None,
         load_callback: Callable[[dict], None] | None = None,
         load_topic: str | None = None,
+        command_callback: Callable[[dict], None] | None = None,
+        command_topic: str | None = None,
+        real_state_callback: Callable[[dict], None] | None = None,
+        real_state_topic: str | None = None,
     ):
         self.host = host or os.environ.get("MQTT_BROKER_HOST") or os.environ.get("MQTT_BROKER") or DEFAULT_HOST
         self.port = int(port or os.environ.get("MQTT_BROKER_PORT") or os.environ.get("MQTT_PORT", DEFAULT_PORT))
@@ -68,6 +74,14 @@ class BridgeMQTTPublisher:
         )
         self.load_callback = load_callback
         self.load_topic = load_topic or os.environ.get("MQTT_LOAD_TOPIC", TOPIC_LOAD)
+        self.command_callback = command_callback
+        self.command_topic = command_topic or os.environ.get(
+            "MQTT_COMMAND_TOPIC", TOPIC_COMMAND
+        )
+        self.real_state_callback = real_state_callback
+        self.real_state_topic = real_state_topic or os.environ.get(
+            "MQTT_REAL_STATE_TOPIC", TOPIC_REAL_STATE
+        )
         self._client = None
         self._connected = False
         self._last_error = None
@@ -101,6 +115,10 @@ class BridgeMQTTPublisher:
             self._client.connect(self.host, self.port, keepalive=60)
             if self.load_callback is not None:
                 self._client.subscribe(self.load_topic, qos=1)
+            if self.command_callback is not None:
+                self._client.subscribe(self.command_topic, qos=1)
+            if self.real_state_callback is not None:
+                self._client.subscribe(self.real_state_topic, qos=1)
             self._client.loop_start()
             self._connected = True
             self._last_error = None
@@ -121,15 +139,21 @@ class BridgeMQTTPublisher:
         self._connected = False
 
     def _on_message(self, _client, _userdata, message) -> None:
-        if self.load_callback is None or message.topic != self.load_topic:
-            return
         try:
             payload = json.loads(message.payload.decode("utf-8"))
             if not isinstance(payload, dict):
-                raise ValueError("load payload must be a JSON object")
-            self.load_callback(payload)
+                raise ValueError("payload must be a JSON object")
+            if message.topic == self.load_topic and self.load_callback is not None:
+                self.load_callback(payload)
+            elif message.topic == self.command_topic and self.command_callback is not None:
+                self.command_callback(payload)
+            elif (
+                message.topic == self.real_state_topic
+                and self.real_state_callback is not None
+            ):
+                self.real_state_callback(payload)
         except Exception as exc:  # noqa: BLE001 - keep MQTT thread alive
-            self._last_error = f"load message error: {exc}"
+            self._last_error = f"MQTT message error: {exc}"
 
     def publish_geometry(self, app) -> bool:
         payload = {
@@ -218,6 +242,15 @@ class BridgeMQTTPublisher:
             "self_weight_n": app.total_self_weight_n,
             "node_loads": {str(k): v for k, v in app.node_loads.items()},
             "visual_defo_scale": app.visual_defo_scale,
+            "comparison_mode": getattr(app, "comparison_mode", "delta"),
+            "comparison_tare_active": getattr(app.comparison, "active", False),
+            "comparison_tare_load_n": getattr(app.comparison, "load_n", 0.0),
+            "comparison_tare_timestamp": getattr(app.comparison, "timestamp", None),
+            "comparison_tare_load_mismatch": (
+                app.comparison.load_mismatch()
+                if hasattr(app, "comparison") and hasattr(app.comparison, "load_mismatch")
+                else False
+            ),
             "node_ids": node_ids,
             "disp_x": disp_x,
             "disp_y": disp_y,

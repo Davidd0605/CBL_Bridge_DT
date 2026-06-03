@@ -85,6 +85,13 @@ public class CameraController : MonoBehaviour
         _velocity = Vector3.Lerp(_velocity, _targetVelocity, (smoothTime > 0 ? (Time.deltaTime / smoothTime) : 1f));
         _transform.position += _velocity * Time.deltaTime;
 
+        // Clamp position to [-20, 20] on all axes
+        Vector3 pos = _transform.position;
+        pos.x = Mathf.Clamp(pos.x, -15f, 15f);
+        pos.y = Mathf.Clamp(pos.y, -5f, 10f);
+        pos.z = Mathf.Clamp(pos.z, -15f, 15f);
+        _transform.position = pos;
+
         if (overlayCamera != null)
         {
             Transform overlayTransform = overlayCamera.transform;

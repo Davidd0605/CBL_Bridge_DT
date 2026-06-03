@@ -103,6 +103,67 @@ class SensitivityMatrix:
         self.app.reset_damage()
         self.app._solve_current_loads()
         return strain_damaged
+    
+    def run_healthy(self, mode: str):
+        """Run the healthy model and return gauge strain vectors in the requested mode."""
+        if mode == "delta":
+            self.healthy_strain = self._read_all_gauges_delta()
+        elif mode == "absolute":
+            self.healthy_strain = self._read_all_gauges_absolute()
+        else:
+            raise ValueError(f"Unsupported mode: {mode!r}")
+        return self.healthy_strain
+
+    def is_healthy(self, 
+                   mac_threshold: float = 0.95,
+                   ortho_threshold: float = 0.10,
+                   nrmse_threshold: float = 0.10,
+                   require_all: bool = False):
+        """Checks if the current measured strain is healthy compared to the baseline using multiple thresholds."""
+        if not hasattr(self, "healthy_strain"):
+            raise RuntimeError(
+                "No healthy reference found. Call run_healthy() first."
+            )
+        
+        s = self.healthy_strain
+        m = self.measured_strain
+
+        #MAC
+        denom = np.dot(m, m) * np.dot(s, s) + 1e-12
+        mac = float(np.abs(np.dot(s, m)) ** 2 / denom) if denom > 1e-12 else 0.0
+
+        #OrthoError
+        s_dot_m = float(np.dot(s, m))
+        s_parallel = (s_dot_m / (np.dot(m, m) + 1e-24)) * m
+        r = s - s_parallel
+        ortho = float(np.linalg.norm(r)) / (float(np.linalg.norm(m)) + 1e-24)
+
+        #nRMSE
+        nrmse = float(np.sqrt(np.mean((s - m) ** 2))) / (
+            float(np.mean(np.abs(m))) + 1e-24
+        )
+
+        mac_pass = mac >= mac_threshold
+        ortho_pass = ortho <= ortho_threshold
+        nrmse_pass = nrmse <= nrmse_threshold
+        criteria_passed = sum([mac_pass, ortho_pass, nrmse_pass])
+
+        if require_all:
+            healthy = criteria_passed == 3
+        else:
+            healthy = criteria_passed >= 2  #Majority vote
+
+        return {
+            "healthy": healthy,
+            "MAC": mac,
+            "OrthoError": ortho,
+            "NRMSE": nrmse,
+            "mac_pass": mac_pass,
+            "ortho_pass": ortho_pass,
+            "nrmse_pass": nrmse_pass,
+            "criteria_passed": criteria_passed,
+        }
+
 
     def build_sensitivity(self, measured_strain, verbose=True, mode: str | None = None):
         """Compute sensitivity matrix and metrics in either delta or absolute space.

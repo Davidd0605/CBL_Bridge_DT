@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+import threading
 import time
 from pathlib import Path
 
@@ -11,6 +12,7 @@ import openseespy.opensees as ops
 
 from bridge_mqtt import BridgeMQTTPublisher
 from comparison_baseline import ComparisonBaseline
+from damage_detection import DamageDetectionService
 
 
 class BridgeModel:
@@ -82,6 +84,8 @@ class BridgeModel:
         )
         self._geometry_published = False
         self.damage_overrides = {}
+        self._opensees_lock = threading.RLock()
+        self.detection = DamageDetectionService(self)
 
         self.defo_scale = 250.0
         self.visual_defo_scale = self.defo_scale
@@ -109,6 +113,7 @@ class BridgeModel:
         self._set_info_message(self._info_message("3D model ready."))
         self._update_status()
         self._publish_mqtt()
+        self.detection.start()
 
     def _load_bridge(self, path):
         with path.open("r", encoding="utf-8") as bridge_file:
@@ -139,6 +144,8 @@ class BridgeModel:
         if not self._geometry_published:
             if self.mqtt.publish_geometry(self):
                 self._geometry_published = True
+        if self.detection.detection_in_progress:
+            return
         self.mqtt.publish_state(self)
 
     def _on_mqtt_load(self, payload):
@@ -153,6 +160,7 @@ class BridgeModel:
     def _store_real_state_payload(self, payload):
         if isinstance(payload, dict):
             self.latest_real_state = payload
+            self.detection.schedule()
 
     def _apply_mqtt_command_payload(self, payload):
         if not isinstance(payload, dict):
@@ -176,6 +184,7 @@ class BridgeModel:
         if action == "tare":
             readings = payload.get("readings", payload.get("strains"))
             if self.tare(strain_readings=readings):
+                self.detection.schedule()
                 return {"ok": True, "message": self._tare_success_message()}
             return {
                 "ok": False,
@@ -424,10 +433,12 @@ class BridgeModel:
         return section
 
     def set_damage(self, element_ids, alpha=0.80):
-        self.damage_overrides = {ele_id: alpha for ele_id in element_ids}
+        with self._opensees_lock:
+            self.damage_overrides = {ele_id: alpha for ele_id in element_ids}
 
     def reset_damage(self):
-        self.damage_overrides = {}
+        with self._opensees_lock:
+            self.damage_overrides = {}
 
     def _element_length(self, element):
         return self._distance(
@@ -609,12 +620,15 @@ class BridgeModel:
                 tare_status += " (re-tare recommended)"
         else:
             tare_status = f" | Comparison mode: {self.comparison_mode}"
+        detection_status = ""
+        if hasattr(self, "detection") and self.detection.last_summary:
+            detection_status = f" | {self.detection.last_summary}"
         self._set_status_message(
             (
                 f"Active node {self.selected_load_node}: applied {active_load:.1f} N | "
                 f"Live: {live_load:.1f} N | Self-weight: {self.total_self_weight_n:.1f} N | "
                 f"Total vertical: {total_load:.1f} N | Uy live: {live_uy:.6e} m, "
-                f"total: {total_uy:.6e} m{tare_status}"
+                f"total: {total_uy:.6e} m{tare_status}{detection_status}"
             )
         )
         self._set_sensor_summary(
@@ -803,6 +817,10 @@ class BridgeModel:
         return math.hypot(px - projected_point[0], py - projected_point[1])
 
     def _solve_current_loads(self):
+        with self._opensees_lock:
+            return self._solve_current_loads_unlocked()
+
+    def _solve_current_loads_unlocked(self):
         self.analysis_completed = False
         try:
             self._build_model()
@@ -900,6 +918,8 @@ class BridgeModel:
             "comparison_mode": self.comparison_mode,
             "comparison_tare_active": self.comparison.active,
             "comparison_tare_load_n": self.comparison.load_n,
+            "flagged_element_ids": list(self.detection.flagged_element_ids),
+            "damage_detection_summary": self.detection.last_summary,
             "analysis_completed": self.analysis_completed,
             "selected_load_node": self.selected_load_node,
             "live_load_n": self._total_applied_load(),
@@ -911,6 +931,8 @@ class BridgeModel:
         }
 
     def close(self):
+        if hasattr(self, "detection"):
+            self.detection.stop()
         self.mqtt.disconnect()
 
     def run_forever(self, poll_seconds: float = 0.5):
@@ -918,6 +940,8 @@ class BridgeModel:
             while True:
                 time.sleep(poll_seconds)
         except KeyboardInterrupt:
+            pass
+        finally:
             self.close()
 
 

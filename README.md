@@ -74,7 +74,7 @@ The Python bridge app publishes two JSON MQTT messages:
    - `supports`: support node definitions
    - `deflection_sensor_points`: sensor nodes used for deflection readout
 
-2. `cbl/bridge/state`
+2. `cbl/bridge/sim/state`
    - `type`: `state`
    - `timestamp`: Unix epoch time
    - `analysis_completed`: whether the current static analysis finished
@@ -86,6 +86,32 @@ The Python bridge app publishes two JSON MQTT messages:
    - `node_ids`, `disp_x`, `disp_y`, `disp_z`: per-node displacement values published as arrays
    - `element_ids`, `utilization`, `axial_strain`, `bending_strain`, `combined_strain`: per-element beam/element results
    - `sensor_readings`: per-sensor node deflection values including live and total vertical displacement
+
+3. `cbl/bridge/sim/damage` (non-retained, published after each detection cycle)
+   - `type`: `damage_detection`
+   - `timestamp`: Unix epoch time
+   - `healthy`: whether strain patterns match the healthy reference
+   - `flagged_element_ids`: OpenSees element IDs flagged as most likely damaged (empty when healthy)
+   - `comparison_mode`, `comparison_tare_active`: comparison settings used for the cycle
+   - `best_ortho`, `best_nrmse`: ranked damage scenarios with `scenario_id`, `element_ids`, `MAC`, and error metrics
+   - `agreement`: whether the orthogonality and NRMSE rankers picked the same scenario
+   - `is_healthy_metrics`: MAC / orthogonality / NRMSE gate values when the bridge is classified healthy
+
+Physical strain input for detection arrives on `cbl/bridge/real/state` (`strain_readings` or `physical_strains`). Configure gauge-to-element mapping in `strain_gauges` inside `bridge_3d_pratt.json`. A tare (`cbl/bridge/command` with `action: tare`) is required when `comparison_mode` is `delta`.
+
+### Tests
+
+```powershell
+python -m pip install pytest
+$env:MQTT_ENABLED="0"
+python -m pytest openseespy/tests -v                    # all tests
+python -m pytest openseespy/tests -v -m "not slow"    # fast only (~1 s)
+python -m pytest openseespy/tests -v -m slow            # full 86-scenario E2E (~1–3 min)
+python -m pytest openseespy/tests/test_mqtt_broker_lifecycle.py -v -s  # real broker (network)
+```
+
+Set `MQTT_SKIP_BROKER_TESTS=1` to skip broker tests. Broker host/credentials use `bridge_mqtt.py` defaults or `.env` (`MQTT_BROKER_HOST`, `MQTT_USERNAME`, etc.).
+```
 
 ### What is calculated
 - Node deformations are node-based displacements, published as `disp_x`, `disp_y`, and `disp_z` for each node.

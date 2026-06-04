@@ -379,6 +379,30 @@
 
   "sensor_nodes": [30, 31, 32, 33, 34],
   "midspan_sensor_node": 32,
+
+  "strain_gauges": [
+    {"gauge_id": "LC1L", "ele_id": 73},
+    {"gauge_id": "LC1R", "ele_id": 74},
+    {"gauge_id": "LC2L", "ele_id": 75},
+    {"gauge_id": "LC2R", "ele_id": 76},
+    {"gauge_id": "LC3L", "ele_id": 77},
+    {"gauge_id": "LC3R", "ele_id": 78},
+    {"gauge_id": "LC4L", "ele_id": 79},
+    {"gauge_id": "LC4R", "ele_id": 80},
+    {"gauge_id": "LC5L", "ele_id": 81},
+    {"gauge_id": "LC5R", "ele_id": 82}
+  ],
+  "damage_detection": {
+    "alpha": 0.8,
+    "mac_weight": 10.0,
+    "healthy_mac_threshold": 0.95,
+    "healthy_ortho_threshold": 0.10,
+    "healthy_nrmse_threshold": 0.10,
+    "require_detector_agreement": false,
+    "debounce_seconds": 1.5,
+    "min_interval_seconds": 5.0
+  },
+
   "notes": [
     "Geometry and steel profiles for openseespy/steel_bridge.py (3D, 6-DOF OpenSees model).",
     "End-panel top nodes (LT0, LT6, RT0, RT6) and their members are omitted: no end top chords, verticals, cross-beams, or lateral braces; interior top network remains from LT1/RT1 inward.",

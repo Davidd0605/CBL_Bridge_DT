@@ -50,6 +50,24 @@ class SensitivityMatrix:
     def clear_tare(self):
         self.baseline.clear()
 
+    def extract_measured_strain(self, real_state, gauge_definitions=None):
+        """Parse physical strain readings in gauge order from a real-state payload."""
+        gauges = gauge_definitions if gauge_definitions is not None else self.gauge_definitions
+        if not gauges:
+            return None
+        if not isinstance(real_state, dict):
+            return None
+        strains = self.baseline._parse_strains_from_state(real_state)
+        if not strains:
+            return None
+        measured = []
+        for gauge in gauges:
+            gauge_id = str(gauge["gauge_id"])
+            if gauge_id not in strains:
+                return None
+            measured.append(float(strains[gauge_id]))
+        return measured
+
     def _read_gauge_absolute(self, gauge):
         """Read absolute combined strain from the model for one gauge element."""
         ele_id = gauge["ele_id"]

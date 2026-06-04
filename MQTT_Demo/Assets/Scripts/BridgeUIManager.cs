@@ -105,4 +105,18 @@ public class BridgeUIManager : MonoBehaviour
     public void OnClickToggleSim() { BridgeBuilder.Instance?.ToggleSimulationBridge(); }
     public void OnClickTogglePopups() { BridgeBuilder.Instance?.TogglePopupUI(); }
     public void OnClickToggleColorMode() { BridgeBuilder.Instance?.ToggleColorMode(); }
+
+    ///     var broker = MQTTClient.Instance;
+    ///
+    ///     // publish
+    ///     broker.Publish("sensors/temperature", "{\"value\": 23.5}");
+    public void OnClickToggleTare() { 
+        var broker = MQTTClient.Instance;
+        broker.Publish("cbl/bridge/command", "{\"action\": \"tare\"} ");
+    }
+    public void OnClickToggleClearTare()
+    {
+        var broker = MQTTClient.Instance;
+        broker.Publish("cbl/bridge/command", "{\"action\": \"clear_tare\"} ");
+    }
 }

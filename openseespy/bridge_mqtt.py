@@ -32,6 +32,7 @@ TOPIC_STATE = "cbl/bridge/sim/state"
 TOPIC_LOAD = "cbl/bridge/load"
 TOPIC_COMMAND = "cbl/bridge/command"
 TOPIC_REAL_STATE = "cbl/bridge/real/state"
+TOPIC_DAMAGE = "cbl/bridge/sim/damage"
 
 
 def _node_position(node: dict) -> tuple[float, float, float]:
@@ -263,6 +264,16 @@ class BridgeMQTTPublisher:
             "sensor_readings": sensor_readings,
         }
         return self._publish(TOPIC_STATE, payload, retain=False)
+
+    def publish_damage_detection(self, app, result: dict) -> bool:
+        topic = os.environ.get("MQTT_DAMAGE_TOPIC", TOPIC_DAMAGE)
+        payload = dict(result)
+        payload.setdefault("type", "damage_detection")
+        payload.setdefault("timestamp", time.time())
+        payload["bridge_name"] = app.bridge.get("name", "bridge_3d_pratt")
+        payload["live_load_n"] = app._total_applied_load()
+        payload["analysis_completed"] = app.analysis_completed
+        return self._publish(topic, payload, retain=False)
 
     def _publish(self, topic: str, payload: dict, retain: bool) -> bool:
         if not self.enabled or not self._connected or self._client is None:

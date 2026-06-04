@@ -99,19 +99,6 @@ The Python bridge app publishes two JSON MQTT messages:
 
 Physical strain input for detection arrives on `cbl/bridge/real/state` (`strain_readings` or `physical_strains`). Configure gauge-to-element mapping in `strain_gauges` inside `bridge_3d_pratt.json`. A tare (`cbl/bridge/command` with `action: tare`) is required when `comparison_mode` is `delta`.
 
-### Tests
-
-```powershell
-python -m pip install pytest
-$env:MQTT_ENABLED="0"
-python -m pytest openseespy/tests -v                    # all tests
-python -m pytest openseespy/tests -v -m "not slow"    # fast only (~1 s)
-python -m pytest openseespy/tests -v -m slow            # full 86-scenario E2E (~1–3 min)
-python -m pytest openseespy/tests/test_mqtt_broker_lifecycle.py -v -s  # real broker (network)
-```
-
-Set `MQTT_SKIP_BROKER_TESTS=1` to skip broker tests. Broker host/credentials use `bridge_mqtt.py` defaults or `.env` (`MQTT_BROKER_HOST`, `MQTT_USERNAME`, etc.).
-```
 
 ### What is calculated
 - Node deformations are node-based displacements, published as `disp_x`, `disp_y`, and `disp_z` for each node.

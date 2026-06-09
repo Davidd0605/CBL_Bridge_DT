@@ -29,6 +29,7 @@ TOPIC_LOAD = "cbl/bridge/load"
 TOPIC_COMMAND = "cbl/bridge/command"
 TOPIC_REAL_STATE = "cbl/bridge/real/state"
 TOPIC_DAMAGE = "cbl/bridge/sim/damage"
+TOPIC_CALIBRATION = "cbl/bridge/sim/calibration"
 
 
 def _node_position(node: dict) -> tuple[float, float, float]:
@@ -255,6 +256,14 @@ class BridgeMQTTPublisher:
             "sensor_readings": sensor_readings,
         }
         return self._publish(TOPIC_STATE, payload, retain=False)
+
+    def publish_calibration(self, app, result: dict) -> bool:
+        topic = os.environ.get("MQTT_CALIBRATION_TOPIC", TOPIC_CALIBRATION)
+        payload = dict(result)
+        payload.setdefault("type", "calibration")
+        payload.setdefault("timestamp", time.time())
+        payload["bridge_name"] = app.bridge.get("name", "bridge_3d_pratt")
+        return self._publish(topic, payload, retain=True)
 
     def publish_damage_detection(self, app, result: dict) -> bool:
         topic = os.environ.get("MQTT_DAMAGE_TOPIC", TOPIC_DAMAGE)

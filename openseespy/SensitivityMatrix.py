@@ -69,8 +69,14 @@ class SensitivityMatrix:
         return measured
 
     def _read_gauge_absolute(self, gauge):
-        """Read absolute combined strain from the model for one gauge element."""
+        """Read combined strain from the model for one gauge element.
+
+        Uses the same live-load-aware strain definition as MQTT sim/state when available.
+        """
         ele_id = gauge["ele_id"]
+        mqtt_strain = getattr(self.app, "_mqtt_element_strain", None)
+        if mqtt_strain is not None:
+            return float(mqtt_strain(ele_id))
         result = self.app.element_results.get(ele_id)
         if result is None:
             raise ValueError(
@@ -150,9 +156,9 @@ class SensitivityMatrix:
         s = self.healthy_strain
         m = self.measured_strain
 
-        #MAC
-        denom = np.dot(m, m) * np.dot(s, s) + 1e-12
-        mac = float(np.abs(np.dot(s, m)) ** 2 / denom) if denom > 1e-12 else 0.0
+        # MAC (no 1e-12 on denom — it breaks MAC for small strain magnitudes)
+        denom = float(np.dot(m, m) * np.dot(s, s))
+        mac = float(np.abs(np.dot(s, m)) ** 2 / denom) if denom > 0.0 else 0.0
 
         #OrthoError
         s_dot_m = float(np.dot(s, m))

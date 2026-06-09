@@ -210,7 +210,6 @@ class BridgeModel:
         if action == "tare":
             readings = payload.get("readings", payload.get("strains"))
             if self.tare(strain_readings=readings):
-                self.detection.schedule()
                 return {"ok": True, "message": self._tare_success_message()}
             return {
                 "ok": False,

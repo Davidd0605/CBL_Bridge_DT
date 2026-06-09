@@ -272,6 +272,9 @@ class DamageDetectionService:
             return None
         finally:
             self.detection_in_progress = False
+            publish_mqtt = getattr(self.model, "_publish_mqtt", None)
+            if publish_mqtt is not None:
+                publish_mqtt()
 
     def _select_flagged_ids(self, detection: dict) -> list[int]:
         require_agreement = bool(self.settings.get("require_detector_agreement", False))

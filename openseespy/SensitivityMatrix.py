@@ -2,7 +2,7 @@ import numpy as np
 
 
 class SensitivityMatrix:
-    """Builds damage sensitivity matrices using either raw strains or tare deltas."""
+    """Build damage sensitivity matrices from current-load model strains."""
 
     def __init__(self, app):
         self.app = app
@@ -69,8 +69,14 @@ class SensitivityMatrix:
         return measured
 
     def _read_gauge_absolute(self, gauge):
-        """Read absolute combined strain from the model for one gauge element."""
+        """Read combined strain from the model for one gauge element.
+
+        Uses the same live-load-aware strain definition as MQTT sim/state when available.
+        """
         ele_id = gauge["ele_id"]
+        mqtt_strain = getattr(self.app, "_mqtt_element_strain", None)
+        if mqtt_strain is not None:
+            return float(mqtt_strain(ele_id))
         result = self.app.element_results.get(ele_id)
         if result is None:
             raise ValueError(
@@ -113,7 +119,7 @@ class SensitivityMatrix:
             )
 
         if mode == "delta":
-            strain_damaged = self._read_all_gauges_delta()
+            strain_damaged = self._read_all_gauges_absolute()
         elif mode == "absolute":
             strain_damaged = self._read_all_gauges_absolute()
         else:
@@ -123,9 +129,13 @@ class SensitivityMatrix:
         return strain_damaged
     
     def run_healthy(self, mode: str):
-        """Run the healthy model and return gauge strain vectors in the requested mode."""
+        """Return healthy model gauge strains at the current live load.
+
+        In delta mode, only physical readings are offset-corrected by the session
+        tare. The model vector remains absolute at the current load.
+        """
         if mode == "delta":
-            self.healthy_strain = self._read_all_gauges_delta()
+            self.healthy_strain = self._read_all_gauges_absolute()
         elif mode == "absolute":
             self.healthy_strain = self._read_all_gauges_absolute()
         else:
@@ -146,9 +156,9 @@ class SensitivityMatrix:
         s = self.healthy_strain
         m = self.measured_strain
 
-        #MAC
-        denom = np.dot(m, m) * np.dot(s, s) + 1e-12
-        mac = float(np.abs(np.dot(s, m)) ** 2 / denom) if denom > 1e-12 else 0.0
+        # MAC (no 1e-12 on denom — it breaks MAC for small strain magnitudes)
+        denom = float(np.dot(m, m) * np.dot(s, s))
+        mac = float(np.abs(np.dot(s, m)) ** 2 / denom) if denom > 0.0 else 0.0
 
         #OrthoError
         s_dot_m = float(np.dot(s, m))
@@ -184,11 +194,12 @@ class SensitivityMatrix:
 
 
     def build_sensitivity(self, measured_strain, verbose=True, mode: str | None = None):
-        """Compute sensitivity matrix and metrics in either delta or absolute space.
+        """Compute sensitivity matrix and metrics in delta or absolute mode.
 
         mode:
-            - "delta": compare tare deltas (requires `self.baseline.active`)
-            - "absolute": compare raw absolute strains (does not require tare)
+            - "delta": compare physical readings after session offset correction
+              against model strains at the current live load (requires tare)
+            - "absolute": compare raw physical readings against raw model strains
 
         measured_strain must match the order of `self.gauge_definitions`.
         """

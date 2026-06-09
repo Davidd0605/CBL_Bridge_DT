@@ -68,7 +68,7 @@ def measured_strain_vector(
     real_state: dict | None,
     comparison,
 ) -> list[float] | None:
-    """Build absolute physical strain readings in gauge order."""
+    """Build raw physical strain readings in gauge order."""
     if not gauge_definitions:
         return None
     if not isinstance(real_state, dict):
@@ -186,8 +186,6 @@ class DamageDetectionService:
             return False, "no strain_gauges configured"
         if not getattr(self.model, "analysis_completed", False):
             return False, "analysis not completed"
-        if self.model.comparison.load_mismatch():
-            return False, "load mismatch — re-tare recommended"
         mode = getattr(self.model, "comparison_mode", "delta")
         if mode == "delta" and not self.model.comparison.active:
             return False, "comparison tare not active"
@@ -274,6 +272,9 @@ class DamageDetectionService:
             return None
         finally:
             self.detection_in_progress = False
+            publish_mqtt = getattr(self.model, "_publish_mqtt", None)
+            if publish_mqtt is not None:
+                publish_mqtt()
 
     def _select_flagged_ids(self, detection: dict) -> list[int]:
         require_agreement = bool(self.settings.get("require_detector_agreement", False))

@@ -84,6 +84,10 @@ class BridgeModel:
         )
         self._geometry_published = False
         self.damage_overrides = {}
+        self._calibration_scales = {"E_scale": 1.0, "angle_A_scale": 1.0, "flat_A_scale": 1.0}
+        self._calibration_in_progress = False
+        self._calibration_path = self.bridge_path.with_name("calibration.json")
+        self._auto_load_calibration()
         self._opensees_lock = threading.RLock()
         self.detection = DamageDetectionService(self)
 
@@ -119,6 +123,26 @@ class BridgeModel:
         with path.open("r", encoding="utf-8") as bridge_file:
             return json.load(bridge_file)
 
+    def _auto_load_calibration(self) -> None:
+        """Apply saved calibration.json scales if the file exists next to the bridge JSON."""
+        if not self._calibration_path.exists():
+            return
+        try:
+            data = json.loads(self._calibration_path.read_text(encoding="utf-8"))
+            for key in ("E_scale", "angle_A_scale", "flat_A_scale"):
+                if key in data and data[key] is not None:
+                    self._calibration_scales[key] = float(data[key])
+            self.model_warnings.append(
+                f"Calibration loaded from {self._calibration_path.name}: "
+                f"E\u00d7{self._calibration_scales['E_scale']:.4f}, "
+                f"angle_A\u00d7{self._calibration_scales['angle_A_scale']:.4f}, "
+                f"flat_A\u00d7{self._calibration_scales['flat_A_scale']:.4f}"
+            )
+        except Exception as exc:
+            self.model_warnings.append(
+                f"Could not load calibration from {self._calibration_path.name}: {exc}"
+            )
+
     def _set_info_message(self, text):
         self._last_info_text = text
         if self._info_callback is not None:
@@ -144,6 +168,8 @@ class BridgeModel:
         if not self._geometry_published:
             if self.mqtt.publish_geometry(self):
                 self._geometry_published = True
+        if self._calibration_in_progress:
+            return
         if self.detection.detection_in_progress:
             return
         self.mqtt.publish_state(self)
@@ -184,7 +210,6 @@ class BridgeModel:
         if action == "tare":
             readings = payload.get("readings", payload.get("strains"))
             if self.tare(strain_readings=readings):
-                self.detection.schedule()
                 return {"ok": True, "message": self._tare_success_message()}
             return {
                 "ok": False,
@@ -225,6 +250,29 @@ class BridgeModel:
             except ValueError as exc:
                 return {"ok": False, "error": str(exc), "message": str(exc)}
             return {"ok": True, "message": f"Comparison mode set to '{mode}'."}
+
+        if action == "apply_calibration":
+            params = payload.get("params") or payload.get("scales") or {}
+            if not isinstance(params, dict) or not params:
+                return {
+                    "ok": False,
+                    "error": "apply_calibration requires a 'params' object with scale factors",
+                    "message": "apply_calibration requires 'params': {E_scale, angle_A_scale, flat_A_scale}",
+                }
+            self.apply_calibration(params)
+            scales = self._calibration_scales
+            return {
+                "ok": True,
+                "message": (
+                    f"Calibration applied: E\u00d7{scales['E_scale']:.4f}, "
+                    f"angle_A\u00d7{scales['angle_A_scale']:.4f}, "
+                    f"flat_A\u00d7{scales['flat_A_scale']:.4f}."
+                ),
+            }
+
+        if action == "reset_calibration":
+            self.reset_calibration()
+            return {"ok": True, "message": "Calibration reset to nominal values."}
 
         return {
             "ok": False,
@@ -386,6 +434,11 @@ class BridgeModel:
         profile = self.profiles.get(profile_name, {})
         area = float(element.get("A", profile.get("A", 8.1e-5)))
         elastic_modulus = float(element.get("E", profile.get("E", 200e9)))
+        e_scale = self._calibration_scales.get("E_scale", 1.0)
+        a_key = "flat_A_scale" if profile_name == "flat_bar_15x3" else "angle_A_scale"
+        a_scale = self._calibration_scales.get(a_key, 1.0)
+        area = area * a_scale
+        elastic_modulus = elastic_modulus * e_scale
         density = float(element.get("density", profile.get("density", 7850.0)))
         yield_stress = float(
             element.get("yield_stress", profile.get("yield_stress", 250e6))
@@ -439,6 +492,34 @@ class BridgeModel:
     def reset_damage(self):
         with self._opensees_lock:
             self.damage_overrides = {}
+
+    def apply_calibration(self, params: dict) -> None:
+        """Apply material/geometry scale factors and rebuild the model.
+
+        Args:
+            params: dict with any of: E_scale, angle_A_scale, flat_A_scale.
+                    Values are multiplied against nominal profile properties.
+        """
+        with self._opensees_lock:
+            for key in ("E_scale", "angle_A_scale", "flat_A_scale"):
+                if key in params:
+                    self._calibration_scales[key] = float(params[key])
+            self._solve_current_loads_unlocked()
+        self._set_info_message(
+            self._info_message(
+                f"Calibration applied: E\u00d7{self._calibration_scales['E_scale']:.4f}, "
+                f"angle_A\u00d7{self._calibration_scales['angle_A_scale']:.4f}, "
+                f"flat_A\u00d7{self._calibration_scales['flat_A_scale']:.4f}."
+            )
+        )
+        self._update_status()
+        self.mqtt.publish_calibration(self, {"calibration_scales": dict(self._calibration_scales)})
+        self._trigger_redraw()
+
+    def reset_calibration(self) -> None:
+        """Reset all calibration scale factors to 1.0 and rebuild the model."""
+        self.apply_calibration({"E_scale": 1.0, "angle_A_scale": 1.0, "flat_A_scale": 1.0})
+        self._set_info_message(self._info_message("Calibration reset to nominal values."))
 
     def _element_length(self, element):
         return self._distance(
@@ -613,11 +694,10 @@ class BridgeModel:
             n_defl = len(self.comparison.physical_deflections)
             tare_status = (
                 f" | Comparison mode: {self.comparison_mode}"
-                f" | Tare @ {self.comparison.load_n:.1f} N"
+                f" | Session tare @ {self.comparison.load_n:.1f} N"
+                f", live {live_load:.1f} N"
                 f" ({n_strain} strain, {n_defl} deflection sensor(s))"
             )
-            if self.comparison.load_mismatch():
-                tare_status += " (re-tare recommended)"
         else:
             tare_status = f" | Comparison mode: {self.comparison_mode}"
         detection_status = ""
@@ -924,6 +1004,7 @@ class BridgeModel:
             "selected_load_node": self.selected_load_node,
             "live_load_n": self._total_applied_load(),
             "node_loads": dict(self.node_loads),
+            "calibration_scales": dict(self._calibration_scales),
             "last_info_text": self._last_info_text,
             "last_status_text": self._last_status_text,
             "last_sensor_text": self._last_sensor_text,

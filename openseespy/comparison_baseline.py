@@ -1,4 +1,4 @@
-"""Physical-sensor tare and model reference for error comparison only."""
+"""Physical-sensor session tare and optional model diagnostics."""
 
 from __future__ import annotations
 
@@ -7,8 +7,7 @@ import time
 
 class ComparisonBaseline:
     """
-    Stores healthy-state readings from the real bridge and a matching model snapshot.
-    Used only by the error-comparison layer — does not alter sim/MQTT output.
+    Stores per-gauge physical offsets for a monitoring session.
     """
 
     def __init__(self, app):
@@ -23,7 +22,7 @@ class ComparisonBaseline:
 
     def tare(self, real_state: dict | None = None, strain_readings=None) -> bool:
         """
-        Capture physical sensor baselines and model reference at the current load.
+        Capture physical sensor offsets and optional model diagnostics.
 
         real_state: latest payload from cbl/bridge/real/state (optional if strain_readings given)
         strain_readings: optional explicit dict or list override for physical strains
@@ -62,6 +61,7 @@ class ComparisonBaseline:
         self.timestamp = None
 
     def load_mismatch(self) -> bool:
+        """Return whether live load differs from tare load; informational only."""
         if not self.active:
             return False
         return dict(self.app.node_loads) != self.node_loads

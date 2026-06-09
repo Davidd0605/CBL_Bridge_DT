@@ -63,9 +63,9 @@ To avoid merge conflicts, **all Unity contributions must be made on separate sce
 ---
 
 ## 5. MQTT messages published by Python
-The Python bridge app publishes two JSON MQTT messages:
+The Python bridge app publishes three JSON MQTT messages:
 
-1. `cbl/bridge/geometry` (retained)
+1. `cbl/bridge/sim/geometry` (retained)
    - `type`: `geometry`
    - `timestamp`: Unix epoch time
    - `bridge_name`: model name from `bridge_3d_pratt.json`
@@ -80,9 +80,10 @@ The Python bridge app publishes two JSON MQTT messages:
    - `analysis_completed`: whether the current static analysis finished
    - `selected_load_node`: currently active load node
    - `live_load_n`: total applied live load in newtons
-   - `self_weight_n`: self-weight load in newtonslive loads per node
-   - `node_loads`: applied 
+   - `self_weight_n`: self-weight load in newtons
+   - `node_loads`: applied live loads per node
    - `visual_defo_scale`: display scaling factor for deformations
+   - `comparison_mode`, `comparison_tare_active`, `comparison_tare_load_n`: current comparison settings and session tare metadata
    - `node_ids`, `disp_x`, `disp_y`, `disp_z`: per-node displacement values published as arrays
    - `element_ids`, `utilization`, `axial_strain`, `bending_strain`, `combined_strain`: per-element beam/element results
    - `sensor_readings`: per-sensor node deflection values including live and total vertical displacement
@@ -97,7 +98,9 @@ The Python bridge app publishes two JSON MQTT messages:
    - `agreement`: whether the orthogonality and NRMSE rankers picked the same scenario
    - `is_healthy_metrics`: MAC / orthogonality / NRMSE gate values when the bridge is classified healthy
 
-Physical strain input for detection arrives on `cbl/bridge/real/state` (`strain_readings` or `physical_strains`). Configure gauge-to-element mapping in `strain_gauges` inside `bridge_3d_pratt.json`. A tare (`cbl/bridge/command` with `action: tare`) is required when `comparison_mode` is `delta`.
+Physical strain input for detection arrives on `cbl/bridge/real/state` (`strain_readings` or `physical_strains`). Configure gauge-to-element mapping in `strain_gauges` inside `bridge_3d_pratt.json`.
+
+For the default `delta` comparison mode, use a session tare: publish healthy bridge strains on `cbl/bridge/real/state`, then send `{"action":"tare"}` on `cbl/bridge/command` once at the start of the monitoring session. After that, vary live load through `cbl/bridge/load` and continue consuming `cbl/bridge/sim/damage`; load changes do not require another tare. Use `{"action":"clear_tare"}` only when ending or resetting the session baseline.
 
 
 ### What is calculated

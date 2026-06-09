@@ -2,7 +2,7 @@ import numpy as np
 
 
 class SensitivityMatrix:
-    """Builds damage sensitivity matrices using either raw strains or tare deltas."""
+    """Build damage sensitivity matrices from current-load model strains."""
 
     def __init__(self, app):
         self.app = app
@@ -113,7 +113,7 @@ class SensitivityMatrix:
             )
 
         if mode == "delta":
-            strain_damaged = self._read_all_gauges_delta()
+            strain_damaged = self._read_all_gauges_absolute()
         elif mode == "absolute":
             strain_damaged = self._read_all_gauges_absolute()
         else:
@@ -123,9 +123,13 @@ class SensitivityMatrix:
         return strain_damaged
     
     def run_healthy(self, mode: str):
-        """Run the healthy model and return gauge strain vectors in the requested mode."""
+        """Return healthy model gauge strains at the current live load.
+
+        In delta mode, only physical readings are offset-corrected by the session
+        tare. The model vector remains absolute at the current load.
+        """
         if mode == "delta":
-            self.healthy_strain = self._read_all_gauges_delta()
+            self.healthy_strain = self._read_all_gauges_absolute()
         elif mode == "absolute":
             self.healthy_strain = self._read_all_gauges_absolute()
         else:
@@ -184,11 +188,12 @@ class SensitivityMatrix:
 
 
     def build_sensitivity(self, measured_strain, verbose=True, mode: str | None = None):
-        """Compute sensitivity matrix and metrics in either delta or absolute space.
+        """Compute sensitivity matrix and metrics in delta or absolute mode.
 
         mode:
-            - "delta": compare tare deltas (requires `self.baseline.active`)
-            - "absolute": compare raw absolute strains (does not require tare)
+            - "delta": compare physical readings after session offset correction
+              against model strains at the current live load (requires tare)
+            - "absolute": compare raw physical readings against raw model strains
 
         measured_strain must match the order of `self.gauge_definitions`.
         """

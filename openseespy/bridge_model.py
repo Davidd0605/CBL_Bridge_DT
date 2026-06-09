@@ -613,11 +613,10 @@ class BridgeModel:
             n_defl = len(self.comparison.physical_deflections)
             tare_status = (
                 f" | Comparison mode: {self.comparison_mode}"
-                f" | Tare @ {self.comparison.load_n:.1f} N"
+                f" | Session tare @ {self.comparison.load_n:.1f} N"
+                f", live {live_load:.1f} N"
                 f" ({n_strain} strain, {n_defl} deflection sensor(s))"
             )
-            if self.comparison.load_mismatch():
-                tare_status += " (re-tare recommended)"
         else:
             tare_status = f" | Comparison mode: {self.comparison_mode}"
         detection_status = ""

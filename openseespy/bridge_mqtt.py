@@ -23,10 +23,6 @@ except ImportError:  # pragma: no cover - optional at import time
 import openseespy.opensees as ops
 
 
-DEFAULT_HOST = "80.113.118.200"
-DEFAULT_PORT = 1883
-DEFAULT_USERNAME = "myuser"
-DEFAULT_PASSWORD = "cblbroker123"
 TOPIC_GEOMETRY = "cbl/bridge/sim/geometry"
 TOPIC_STATE = "cbl/bridge/sim/state"
 TOPIC_LOAD = "cbl/bridge/load"
@@ -64,10 +60,10 @@ class BridgeMQTTPublisher:
         real_state_callback: Callable[[dict], None] | None = None,
         real_state_topic: str | None = None,
     ):
-        self.host = host or os.environ.get("MQTT_BROKER_HOST") or os.environ.get("MQTT_BROKER") or DEFAULT_HOST
-        self.port = int(port or os.environ.get("MQTT_BROKER_PORT") or os.environ.get("MQTT_PORT", DEFAULT_PORT))
-        self.username = username or os.environ.get("MQTT_USERNAME", DEFAULT_USERNAME)
-        self.password = password or os.environ.get("MQTT_PASSWORD", DEFAULT_PASSWORD)
+        self.host = host or os.environ.get("MQTT_BROKER_HOST") or os.environ.get("MQTT_BROKER")
+        self.port = int(port or os.environ.get("MQTT_BROKER_PORT") or os.environ.get("MQTT_PORT"))
+        self.username = username or os.environ.get("MQTT_USERNAME")
+        self.password = password or os.environ.get("MQTT_PASSWORD")
         self.enabled = (
             enabled
             if enabled is not None
@@ -247,11 +243,6 @@ class BridgeMQTTPublisher:
             "comparison_tare_active": getattr(app.comparison, "active", False),
             "comparison_tare_load_n": getattr(app.comparison, "load_n", 0.0),
             "comparison_tare_timestamp": getattr(app.comparison, "timestamp", None),
-            "comparison_tare_load_mismatch": (
-                app.comparison.load_mismatch()
-                if hasattr(app, "comparison") and hasattr(app.comparison, "load_mismatch")
-                else False
-            ),
             "node_ids": node_ids,
             "disp_x": disp_x,
             "disp_y": disp_y,

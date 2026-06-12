@@ -85,12 +85,34 @@ def _wait_for_real_state(model: BridgeModel, timeout: float) -> dict | None:
 # Main calibration routine
 # ---------------------------------------------------------------------------
 
+def _apply_load(model: BridgeModel, node: int, load_n: float) -> bool:
+    model.node_loads = {node: load_n} if load_n > 0.0 else {}
+    return model._solve_current_loads() == 0
+
+
+def _capture_state(model: BridgeModel, timeout: float) -> dict | None:
+    model.latest_real_state = None
+    return _wait_for_real_state(model, timeout=timeout)
+
+
 def run_calibration(args: argparse.Namespace) -> int:
     load_specs = _parse_load_specs(args.loads)
+    gauge_cal_only = args.gauge_cal_only
+    model_cal_only = args.model_cal_only
+    if gauge_cal_only and model_cal_only:
+        print("ERROR: --gauge-cal-only and --model-cal-only are mutually exclusive.")
+        return 1
+
+    mode_label = "unified (gauge + model)"
+    if gauge_cal_only:
+        mode_label = "gauge calibration only"
+    elif model_cal_only:
+        mode_label = "model calibration only"
 
     print("=" * 60)
-    print("  Bridge model one-shot calibration")
+    print("  Bridge calibration")
     print("=" * 60)
+    print(f"  Mode           : {mode_label}")
     print(f"  Load positions : {', '.join(f'node {n} @ {l} N' for n, l in load_specs)}")
     print(f"  Method         : {args.method}")
     print(f"  Max iterations : {args.max_iter}")
@@ -101,6 +123,7 @@ def run_calibration(args: argparse.Namespace) -> int:
     print("Starting bridge model (MQTT enabled) …")
     model = BridgeModel()
     calibrator = BridgeCalibrator(model)
+    gauge_cal = model.gauge_calibration
 
     if model.model_warnings:
         for warning in model.model_warnings:
@@ -115,13 +138,56 @@ def run_calibration(args: argparse.Namespace) -> int:
         model.close()
         return 1
 
+    if model_cal_only and gauge_cal.enabled and not gauge_cal.active:
+        print(
+            "ERROR: Gauge calibration is enabled but not active. "
+            "Run gauge calibration first or use the default unified mode."
+        )
+        model.close()
+        return 1
+
     if not model.mqtt._connected:
         print("WARNING: MQTT not connected — cannot receive real/state readings.")
         print("         Set MQTT_BROKER_HOST (and MQTT_BROKER_PORT) environment variables.")
         print()
 
+    do_gauge = not model_cal_only
+    do_model = not gauge_cal_only
+
     # ------------------------------------------------------------------
-    # Collect one measurement per load position
+    # Zero-load step: session tare + gauge raw tare + first cal point
+    # ------------------------------------------------------------------
+    if do_gauge:
+        print("Step 0: zero load — remove all live load from the bridge.")
+        input("        Press Enter when load is zero and readings are stable … ")
+
+        if not _apply_load(model, model.default_load_node, 0.0):
+            print("ERROR: Could not solve model at zero load.")
+            model.close()
+            return 1
+
+        state = _capture_state(model, timeout=args.timeout)
+        if state is None:
+            print(
+                f"ERROR: No real/state received within {args.timeout:.0f} s at zero load."
+            )
+            model.close()
+            return 1
+
+        model.tare(strain_readings=state)
+        if not gauge_cal.set_raw_tare(state):
+            print("ERROR: Could not set gauge raw tare from zero-load readings.")
+            model.close()
+            return 1
+        if not gauge_cal.capture_point(state):
+            print(f"ERROR: {gauge_cal.last_summary}")
+            model.close()
+            return 1
+        print(f"  {gauge_cal.last_summary}")
+        print(f"  Session tare set at {model.comparison.load_n:.1f} N.\n")
+
+    # ------------------------------------------------------------------
+    # Collect measurements / gauge cal points at each load position
     # ------------------------------------------------------------------
     for idx, (node, load_n) in enumerate(load_specs, start=1):
         if node not in model.node_coords:
@@ -131,10 +197,11 @@ def run_calibration(args: argparse.Namespace) -> int:
         print(f"[{idx}/{len(load_specs)}]  Apply {load_n:.1f} N at bridge node {node}.")
         input("         Press Enter when load is applied and readings are stable … ")
 
-        # Clear any stale reading so we get a fresh one after the load
-        model.latest_real_state = None
-        state = _wait_for_real_state(model, timeout=args.timeout)
+        if not _apply_load(model, node, load_n):
+            print(f"  [skip] Analysis failed at node {node}.")
+            continue
 
+        state = _capture_state(model, timeout=args.timeout)
         if state is None:
             print(
                 f"  [skip] No real/state received within {args.timeout:.0f} s. "
@@ -142,24 +209,46 @@ def run_calibration(args: argparse.Namespace) -> int:
             )
             continue
 
-        try:
-            calibrator.add_measurement({node: load_n}, state)
-        except ValueError as exc:
-            print(f"  [skip] Could not parse readings: {exc}")
+        if do_gauge and not gauge_cal.capture_point(state):
+            print(f"  [skip] {gauge_cal.last_summary}")
             continue
 
-        print(f"  Measurement {idx} recorded.\n")
+        if do_model:
+            try:
+                calibrator.add_measurement({node: load_n}, state)
+            except ValueError as exc:
+                print(f"  [skip] Could not parse readings: {exc}")
+                continue
+
+        print(f"  Load step {idx} recorded.\n")
+
+    # ------------------------------------------------------------------
+    # Fit gauge calibration
+    # ------------------------------------------------------------------
+    if do_gauge:
+        print("Fitting per-gauge scales …")
+        gauge_result = gauge_cal.fit()
+        if not gauge_result.success:
+            print(f"ERROR: {gauge_cal.last_summary}")
+            model.close()
+            return 1
+        print(f"  {gauge_cal.last_summary}")
+        print(f"  Saved to: {gauge_cal.path.resolve()}\n")
+
+    if gauge_cal_only:
+        model.close()
+        return 0
 
     if not calibrator.measurements:
-        print("ERROR: No measurements were collected. Aborting.")
+        print("ERROR: No model measurements were collected. Aborting.")
         model.close()
         return 1
 
     # ------------------------------------------------------------------
-    # Run optimiser
+    # Run model optimiser
     # ------------------------------------------------------------------
     n = len(calibrator.measurements)
-    print(f"Running optimiser over {n} measurement(s) …  (this may take a moment)")
+    print(f"Running model optimiser over {n} measurement(s) …  (this may take a moment)")
 
     try:
         result = calibrator.run(method=args.method, max_iter=args.max_iter)
@@ -172,7 +261,7 @@ def run_calibration(args: argparse.Namespace) -> int:
     # Report
     # ------------------------------------------------------------------
     print()
-    print("Calibration result")
+    print("Model calibration result")
     print("-" * 40)
     print(f"  E_scale       = {result.E_scale:.6f}")
     print(f"  angle_A_scale = {result.angle_A_scale:.6f}")
@@ -193,11 +282,11 @@ def run_calibration(args: argparse.Namespace) -> int:
     # Save
     # ------------------------------------------------------------------
     out = Path(args.output)
-    # Default: save alongside the bridge JSON (auto-loaded by BridgeModel)
     if args.output == "calibration.json":
         out = model._calibration_path
 
     calibrator.save(out, result)
+    calibrator.apply(result)
     print(f"\nSaved to: {out.resolve()}")
     print("Restart bridge_model.py — it will load this calibration automatically.")
 
@@ -259,6 +348,16 @@ def main() -> None:
         type=float,
         default=30.0,
         help="Seconds to wait for an MQTT real/state reading per step. Default: %(default)s",
+    )
+    parser.add_argument(
+        "--gauge-cal-only",
+        action="store_true",
+        help="Fit and save gauge_calibration.json only; skip model optimiser.",
+    )
+    parser.add_argument(
+        "--model-cal-only",
+        action="store_true",
+        help="Run model optimiser only (requires active gauge cal if enabled).",
     )
 
     args = parser.parse_args()

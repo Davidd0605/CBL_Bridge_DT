@@ -121,6 +121,9 @@ class BridgeCalibrator:
                 "gauge_readings produced no usable strain values. "
                 "Pass a {gauge_id: value} dict or a real/state MQTT payload."
             )
+        gauge_cal = getattr(self.model, "gauge_calibration", None)
+        if gauge_cal is not None and gauge_cal.active:
+            parsed = gauge_cal.convert(parsed)
         self.measurements.append(({int(k): float(v) for k, v in node_loads.items()}, parsed))
 
     def clear_measurements(self) -> None:

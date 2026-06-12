@@ -13,6 +13,7 @@ import openseespy.opensees as ops
 from bridge_mqtt import BridgeMQTTPublisher
 from comparison_baseline import ComparisonBaseline
 from damage_detection import DamageDetectionService
+from gauge_calibration import GaugeCalibrator
 
 
 class BridgeModel:
@@ -88,6 +89,8 @@ class BridgeModel:
         self._calibration_in_progress = False
         self._calibration_path = self.bridge_path.with_name("calibration.json")
         self._auto_load_calibration()
+        self.gauge_calibration = GaugeCalibrator(self)
+        self._auto_load_gauge_calibration()
         self._opensees_lock = threading.RLock()
         self.detection = DamageDetectionService(self)
 
@@ -142,6 +145,12 @@ class BridgeModel:
             self.model_warnings.append(
                 f"Could not load calibration from {self._calibration_path.name}: {exc}"
             )
+
+    def _auto_load_gauge_calibration(self) -> None:
+        if not self.gauge_calibration.enabled:
+            return
+        if self.gauge_calibration.load():
+            self.model_warnings.append(self.gauge_calibration.last_summary)
 
     def _set_info_message(self, text):
         self._last_info_text = text
@@ -273,6 +282,41 @@ class BridgeModel:
         if action == "reset_calibration":
             self.reset_calibration()
             return {"ok": True, "message": "Calibration reset to nominal values."}
+
+        if action == "capture_gauge_cal_point":
+            if self.gauge_calibration.capture_point():
+                return {"ok": True, "message": self.gauge_calibration.last_summary}
+            return {
+                "ok": False,
+                "error": "capture_gauge_cal_point failed",
+                "message": self.gauge_calibration.last_summary,
+            }
+
+        if action == "fit_gauge_calibration":
+            result = self.gauge_calibration.fit()
+            if result.success:
+                return {"ok": True, "message": self.gauge_calibration.last_summary}
+            return {
+                "ok": False,
+                "error": "fit_gauge_calibration failed",
+                "message": self.gauge_calibration.last_summary,
+            }
+
+        if action == "clear_gauge_calibration":
+            self.gauge_calibration.clear()
+            return {"ok": True, "message": self.gauge_calibration.last_summary}
+
+        if action == "set_gauge_raw_tare":
+            readings = payload.get("readings", payload.get("strains"))
+            if readings is None and isinstance(self.latest_real_state, dict):
+                readings = self.latest_real_state
+            if self.gauge_calibration.set_raw_tare(readings):
+                return {"ok": True, "message": self.gauge_calibration.last_summary}
+            return {
+                "ok": False,
+                "error": "set_gauge_raw_tare failed",
+                "message": "Gauge raw tare failed: need readings or latest real/state.",
+            }
 
         return {
             "ok": False,
@@ -703,12 +747,15 @@ class BridgeModel:
         detection_status = ""
         if hasattr(self, "detection") and self.detection.last_summary:
             detection_status = f" | {self.detection.last_summary}"
+        gauge_cal_status = ""
+        if hasattr(self, "gauge_calibration") and self.gauge_calibration.last_summary:
+            gauge_cal_status = f" | {self.gauge_calibration.last_summary}"
         self._set_status_message(
             (
                 f"Active node {self.selected_load_node}: applied {active_load:.1f} N | "
                 f"Live: {live_load:.1f} N | Self-weight: {self.total_self_weight_n:.1f} N | "
                 f"Total vertical: {total_load:.1f} N | Uy live: {live_uy:.6e} m, "
-                f"total: {total_uy:.6e} m{tare_status}{detection_status}"
+                f"total: {total_uy:.6e} m{tare_status}{gauge_cal_status}{detection_status}"
             )
         )
         self._set_sensor_summary(
@@ -941,6 +988,14 @@ class BridgeModel:
     def _has_live_load(self):
         return self._total_applied_load() > 0.0
 
+    def parse_physical_strains(self, real_state) -> dict[str, float]:
+        parsed = self.comparison._parse_strains_from_state(real_state or {})
+        if not parsed:
+            return {}
+        if self.gauge_calibration.active:
+            return self.gauge_calibration.convert(parsed)
+        return parsed
+
     def tare(self, strain_readings=None):
         return self.comparison.tare(
             real_state=self.latest_real_state,
@@ -1005,6 +1060,9 @@ class BridgeModel:
             "live_load_n": self._total_applied_load(),
             "node_loads": dict(self.node_loads),
             "calibration_scales": dict(self._calibration_scales),
+            "gauge_calibration_active": self.gauge_calibration.active,
+            "gauge_calibration_enabled": self.gauge_calibration.enabled,
+            "gauge_calibration_summary": self.gauge_calibration.last_summary,
             "last_info_text": self._last_info_text,
             "last_status_text": self._last_status_text,
             "last_sensor_text": self._last_sensor_text,

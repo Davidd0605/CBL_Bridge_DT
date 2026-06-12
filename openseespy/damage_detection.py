@@ -78,6 +78,11 @@ def measured_strain_vector(
     if not strains:
         return None
 
+    app = getattr(comparison, "app", None)
+    gauge_cal = getattr(app, "gauge_calibration", None) if app is not None else None
+    if gauge_cal is not None and gauge_cal.active:
+        strains = gauge_cal.convert(strains)
+
     measured = []
     for gauge in gauge_definitions:
         gauge_id = str(gauge["gauge_id"])
@@ -186,6 +191,9 @@ class DamageDetectionService:
             return False, "no strain_gauges configured"
         if not getattr(self.model, "analysis_completed", False):
             return False, "analysis not completed"
+        gauge_cal = getattr(self.model, "gauge_calibration", None)
+        if gauge_cal is not None and gauge_cal.enabled and not gauge_cal.active:
+            return False, "gauge calibration not active"
         mode = getattr(self.model, "comparison_mode", "delta")
         if mode == "delta" and not self.model.comparison.active:
             return False, "comparison tare not active"

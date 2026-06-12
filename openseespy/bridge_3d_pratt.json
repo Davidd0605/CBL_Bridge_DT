@@ -392,6 +392,11 @@
     {"gauge_id": "LC5L", "ele_id": 81},
     {"gauge_id": "LC5R", "ele_id": 82}
   ],
+  "gauge_calibration": {
+    "enabled": true,
+    "path": "gauge_calibration.json",
+    "min_load_steps": 2
+  },
   "damage_detection": {
     "alpha": 0.8,
     "mac_weight": 10.0,

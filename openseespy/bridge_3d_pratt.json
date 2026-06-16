@@ -254,6 +254,62 @@
       "x": 0.7,
       "y": 0.1,
       "z": 0.06
+    },
+    {
+      "id": 101,
+      "label": "LCN1L",
+      "x": 0.28,
+      "y": 0.0,
+      "z": -0.025
+    },
+    {
+      "id": 102,
+      "label": "LCN1R",
+      "x": 0.28,
+      "y": 0.0,
+      "z": 0.025
+    },
+    {
+      "id": 103,
+      "label": "LCN2L",
+      "x": 0.42,
+      "y": 0.0,
+      "z": -0.025
+    },
+    {
+      "id": 104,
+      "label": "LCN2R",
+      "x": 0.42,
+      "y": 0.0,
+      "z": 0.025
+    },
+    {
+      "id": 105,
+      "label": "LCN3L",
+      "x": 0.56,
+      "y": 0.0,
+      "z": -0.025
+    },
+    {
+      "id": 106,
+      "label": "LCN3R",
+      "x": 0.56,
+      "y": 0.0,
+      "z": 0.025
+    },
+    {
+      "id": 107,
+      "label": "LCN4L",
+      "x": 0.7,
+      "y": 0.0,
+      "z": -0.025
+    },
+    {
+      "id": 108,
+      "label": "LCN4R",
+      "x": 0.7,
+      "y": 0.0,
+      "z": 0.025
     }
   ],
   "elements": [
@@ -711,48 +767,88 @@
   "midspan_sensor_node": 4,
   "strain_gauges": [
     {
-      "gauge_id": "LC1L",
-      "ele_id": 52
+      "gauge_id": "SB1",
+      "ele_id": 2
     },
     {
-      "gauge_id": "LC1R",
-      "ele_id": 52
+      "gauge_id": "SB2",
+      "ele_id": 3
     },
     {
-      "gauge_id": "LC2L",
-      "ele_id": 53
+      "gauge_id": "SB3",
+      "ele_id": 4
     },
     {
-      "gauge_id": "LC2R",
-      "ele_id": 53
+      "gauge_id": "ST1",
+      "ele_id": 8
+    },
+    {
+      "gauge_id": "ST2",
+      "ele_id": 9
+    },
+    {
+      "gauge_id": "ST3",
+      "ele_id": 10
+    },
+    {
+      "gauge_id": "SD1",
+      "ele_id": 40
+    },
+    {
+      "gauge_id": "SD2",
+      "ele_id": 42
+    },
+    {
+      "gauge_id": "SB1R",
+      "ele_id": 14
+    },
+    {
+      "gauge_id": "SB2R",
+      "ele_id": 15
+    },
+    {
+      "gauge_id": "SB3R",
+      "ele_id": 16
+    },
+    {
+      "gauge_id": "ST1R",
+      "ele_id": 20
+    },
+    {
+      "gauge_id": "ST2R",
+      "ele_id": 21
+    },
+    {
+      "gauge_id": "ST3R",
+      "ele_id": 22
+    },
+    {
+      "gauge_id": "SD1R",
+      "ele_id": 46
+    },
+    {
+      "gauge_id": "SD2R",
+      "ele_id": 48
     },
     {
       "gauge_id": "LC3L",
-      "ele_id": 54
+      "ele_id": 55
     },
     {
       "gauge_id": "LC3R",
-      "ele_id": 54
+      "ele_id": 55
     },
     {
       "gauge_id": "LC4L",
-      "ele_id": 55
-    },
-    {
-      "gauge_id": "LC4R",
-      "ele_id": 55
-    },
-    {
-      "gauge_id": "LC5L",
       "ele_id": 56
     },
     {
-      "gauge_id": "LC5R",
+      "gauge_id": "LC4R",
       "ele_id": 56
     }
   ],
   "gauge_calibration": {
-    "enabled": true,
+    "enabled": false,
     "path": "gauge_calibration.json",
     "min_load_steps": 2
   },
@@ -773,6 +869,76 @@
     "Main truss members and deck_cross_beam/top_cross_beam use the 15x15x3 angle steel profile by rule.",
     "Pratt diagonals use the 15x3 steel flat bar profile by rule.",
     "Center deck stringer, floor beam halves, and all lateral bracing have been removed; deck_cross_beam is the sole left-to-right deck member at each panel point.",
-    "Strain gauges LC1L/R\u2013LC5L/R remapped to deck_cross_beam elements 52\u201356 (L and R share the same element)."
+    "Strain gauges LC1L/R\u2013LC5L/R remapped to deck_cross_beam elements 52\u201356 (L and R share the same element).",
+    "Instrumentation updated: 2 load cells on each of the 3 center bottom members (elements 53-55), plus strain gauges on bottom/top center members and diagonals from bottom node LB3.",
+    "Strain gauges mirrored on the right truss: bottom chords 14-16, top chords 20-22, diagonals 46 and 48.",
+    "Load cells are positioned on bottom beam lines at +/-2.5 cm from centerline (z=+/-0.025 m) for the three center members.",
+    "Demo strain gauges LC3L/R and LC4L/R mapped to bottom cross-beam members 55 and 56."
+  ],
+  "load_cells": [
+    {
+      "sensor_id": "LC1L",
+      "label": "center_bottom_member_x28cm_left_offset_2p5cm",
+      "deck_node": 101,
+      "truss_node": 3,
+      "connecting_element": 53,
+      "measure": "member_force"
+    },
+    {
+      "sensor_id": "LC1R",
+      "label": "center_bottom_member_x28cm_right_offset_2p5cm",
+      "deck_node": 102,
+      "truss_node": 17,
+      "connecting_element": 53,
+      "measure": "member_force"
+    },
+    {
+      "sensor_id": "LC2L",
+      "label": "center_bottom_member_x42cm_left_offset_2p5cm",
+      "deck_node": 103,
+      "truss_node": 4,
+      "connecting_element": 54,
+      "measure": "member_force"
+    },
+    {
+      "sensor_id": "LC2R",
+      "label": "center_bottom_member_x42cm_right_offset_2p5cm",
+      "deck_node": 104,
+      "truss_node": 18,
+      "connecting_element": 54,
+      "measure": "member_force"
+    },
+    {
+      "sensor_id": "LC3L",
+      "label": "center_bottom_member_x56cm_left_offset_2p5cm",
+      "deck_node": 105,
+      "truss_node": 5,
+      "connecting_element": 55,
+      "measure": "member_force"
+    },
+    {
+      "sensor_id": "LC3R",
+      "label": "center_bottom_member_x56cm_right_offset_2p5cm",
+      "deck_node": 106,
+      "truss_node": 19,
+      "connecting_element": 55,
+      "measure": "member_force"
+    },
+    {
+      "sensor_id": "LC4L",
+      "label": "center_bottom_member_x70cm_left_offset_2p5cm",
+      "deck_node": 107,
+      "truss_node": 6,
+      "connecting_element": 56,
+      "measure": "member_force"
+    },
+    {
+      "sensor_id": "LC4R",
+      "label": "center_bottom_member_x70cm_right_offset_2p5cm",
+      "deck_node": 108,
+      "truss_node": 20,
+      "connecting_element": 56,
+      "measure": "member_force"
+    }
   ]
 }

@@ -192,8 +192,10 @@ class DamageDetectionService:
         if not getattr(self.model, "analysis_completed", False):
             return False, "analysis not completed"
         gauge_cal = getattr(self.model, "gauge_calibration", None)
-        if gauge_cal is not None and gauge_cal.enabled and not gauge_cal.active:
-            return False, "gauge calibration not active"
+        if gauge_cal is not None and gauge_cal.enabled:
+            calibration_expected = gauge_cal.path.exists() or bool(gauge_cal.scales)
+            if calibration_expected and not gauge_cal.active:
+                return False, "gauge calibration not active"
         mode = getattr(self.model, "comparison_mode", "delta")
         if mode == "delta" and not self.model.comparison.active:
             return False, "comparison tare not active"

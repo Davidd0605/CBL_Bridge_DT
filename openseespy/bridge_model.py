@@ -641,6 +641,23 @@ class BridgeModel:
             if load > 0.0
         }
 
+    def _opensees_node_ids(self):
+        """Nodes that participate in the structural model (excludes metadata-only markers)."""
+        ids = set()
+        for element in self.elements:
+            ids.add(element["i"])
+            ids.add(element["j"])
+        for support in self.supports:
+            ids.add(int(support["node"]))
+        for node in self.node_loads:
+            ids.add(int(node))
+        for load_point in self.load_points:
+            ids.add(int(load_point["node"]))
+        for sensor in self.sensor_points:
+            ids.add(int(sensor["node"]))
+        ids.add(int(self.selected_load_node))
+        return ids
+
     def _build_model(self):
         ops.wipe()
         self.element_results = {}
@@ -649,7 +666,10 @@ class BridgeModel:
         if errors:
             raise ValueError(" ".join(errors))
         ops.model("basic", "-ndm", 3, "-ndf", 6)
+        analysis_nodes = self._opensees_node_ids()
         for tag, (x, y, z) in self.node_coords.items():
+            if tag not in analysis_nodes:
+                continue
             ops.node(tag, x, y, z)
         for support in self.supports:
             ops.fix(int(support["node"]), *self._normalize_support_fixity(support))
@@ -846,7 +866,7 @@ class BridgeModel:
             return 0.0, None
         max_node = None
         max_uy = 0.0
-        for node in self.node_coords:
+        for node in self._opensees_node_ids():
             uy = self._display_node_disp(node)[1] if self._has_live_load() else 0.0
             if max_node is None or abs(uy) > abs(max_uy):
                 max_node = node
@@ -971,7 +991,7 @@ class BridgeModel:
     def _capture_dead_load_baseline(self):
         self.dead_load_displacements = {
             node: (ops.nodeDisp(node, 1), ops.nodeDisp(node, 2), ops.nodeDisp(node, 3))
-            for node in self.node_coords
+            for node in self._opensees_node_ids()
         }
         self.dead_load_strains = {
             element_id: {

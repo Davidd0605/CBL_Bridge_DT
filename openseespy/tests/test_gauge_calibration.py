@@ -93,6 +93,12 @@ def test_prerequisites_skip_without_gauge_cal():
     class FakeGaugeCal:
         enabled = True
         active = False
+        scales = {}
+
+        class path:
+            @staticmethod
+            def exists():
+                return True
 
     class FakeModel:
         def __init__(self):

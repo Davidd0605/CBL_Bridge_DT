@@ -190,7 +190,7 @@ class BridgeMQTTPublisher:
         disp_x = []
         disp_y = []
         disp_z = []
-        for node_id in sorted(app.node_coords):
+        for node_id in sorted(app._opensees_node_ids()):
             ux, uy, uz = _unpack_displacement(node_disp(node_id))
             node_ids.append(node_id)
             disp_x.append(ux)

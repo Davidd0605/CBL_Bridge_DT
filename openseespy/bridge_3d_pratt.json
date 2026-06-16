@@ -1,14 +1,21 @@
 {
   "bridge_type": "3D Pratt truss bridge",
   "units": "m",
-  "span_length": 0.60,
-  "truss_height": 0.15,
+  "span_length": 0.8400000000000001,
+  "truss_height": 0.1,
   "bridge_width": 0.12,
   "model_dimension": 3,
   "recommended_opensees_model": {
     "ndm": 3,
     "ndf": 6,
-    "node_dofs": ["ux", "uy", "uz", "rx", "ry", "rz"]
+    "node_dofs": [
+      "ux",
+      "uy",
+      "uz",
+      "rx",
+      "ry",
+      "rz"
+    ]
   },
   "description": "Concept 3D Pratt bridge geometry with approximately the same span and height as bridge.json. X is span, Y is vertical, and Z is bridge width.",
   "design_specification": {
@@ -23,7 +30,7 @@
       "shape": "equal_angle",
       "leg_length_m": 0.015,
       "thickness_m": 0.003,
-      "A": 0.000081,
+      "A": 8.1e-05,
       "E": 200000000000.0,
       "density": 7850.0,
       "yield_stress": 250000000.0,
@@ -32,8 +39,7 @@
         "bottom_chord",
         "vertical",
         "deck_cross_beam",
-        "floor_beam",
-        "center_deck_stringer"
+        "top_cross_beam"
       ]
     },
     "flat_bar_15x3": {
@@ -41,25 +47,29 @@
       "shape": "flat_bar",
       "width_m": 0.015,
       "thickness_m": 0.003,
-      "A": 0.000045,
+      "A": 4.5e-05,
       "E": 200000000000.0,
       "density": 7850.0,
       "yield_stress": 250000000.0,
       "intended_for": [
-        "pratt_diagonal",
-        "deck_lateral_brace",
-        "top_lateral_brace",
-        "secondary_bracing"
+        "pratt_diagonal"
       ]
     }
   },
   "member_profile_rules": [
     {
-      "match_type_contains": ["bottom_chord", "top_chord", "vertical", "cross_beam", "floor_beam", "stringer"],
+      "match_type_contains": [
+        "bottom_chord",
+        "top_chord",
+        "vertical",
+        "cross_beam"
+      ],
       "profile": "angle_15x15x3"
     },
     {
-      "match_type_contains": ["pratt_diagonal", "lateral_brace"],
+      "match_type_contains": [
+        "pratt_diagonal"
+      ],
       "profile": "flat_bar_15x3"
     }
   ],
@@ -69,7 +79,6 @@
     "applies_to_node_groups": [
       "bottom_chord_nodes",
       "top_chord_nodes",
-      "deck_center_nodes",
       "support_nodes"
     ],
     "notes": [
@@ -77,320 +86,670 @@
       "Joint stiffness is not yet represented explicitly in the current data file."
     ]
   },
-
   "nodes": [
-    {"id": 1, "label": "LB0", "x": 0.00, "y": 0.00, "z": -0.06},
-    {"id": 2, "label": "LB1", "x": 0.10, "y": 0.00, "z": -0.06},
-    {"id": 3, "label": "LB2", "x": 0.20, "y": 0.00, "z": -0.06},
-    {"id": 4, "label": "LB3", "x": 0.30, "y": 0.00, "z": -0.06},
-    {"id": 5, "label": "LB4", "x": 0.40, "y": 0.00, "z": -0.06},
-    {"id": 6, "label": "LB5", "x": 0.50, "y": 0.00, "z": -0.06},
-    {"id": 7, "label": "LB6", "x": 0.60, "y": 0.00, "z": -0.06},
-
-    {"id": 9, "label": "LT1", "x": 0.10, "y": 0.15, "z": -0.06},
-    {"id": 10, "label": "LT2", "x": 0.20, "y": 0.15, "z": -0.06},
-    {"id": 11, "label": "LT3", "x": 0.30, "y": 0.15, "z": -0.06},
-    {"id": 12, "label": "LT4", "x": 0.40, "y": 0.15, "z": -0.06},
-    {"id": 13, "label": "LT5", "x": 0.50, "y": 0.15, "z": -0.06},
-    {"id": 15, "label": "RB0", "x": 0.00, "y": 0.00, "z": 0.06},
-    {"id": 16, "label": "RB1", "x": 0.10, "y": 0.00, "z": 0.06},
-    {"id": 17, "label": "RB2", "x": 0.20, "y": 0.00, "z": 0.06},
-    {"id": 18, "label": "RB3", "x": 0.30, "y": 0.00, "z": 0.06},
-    {"id": 19, "label": "RB4", "x": 0.40, "y": 0.00, "z": 0.06},
-    {"id": 20, "label": "RB5", "x": 0.50, "y": 0.00, "z": 0.06},
-    {"id": 21, "label": "RB6", "x": 0.60, "y": 0.00, "z": 0.06},
-
-    {"id": 23, "label": "RT1", "x": 0.10, "y": 0.15, "z": 0.06},
-    {"id": 24, "label": "RT2", "x": 0.20, "y": 0.15, "z": 0.06},
-    {"id": 25, "label": "RT3", "x": 0.30, "y": 0.15, "z": 0.06},
-    {"id": 26, "label": "RT4", "x": 0.40, "y": 0.15, "z": 0.06},
-    {"id": 27, "label": "RT5", "x": 0.50, "y": 0.15, "z": 0.06},
-    {"id": 29, "label": "C0", "x": 0.00, "y": 0.00, "z": 0.00},
-    {"id": 30, "label": "C1", "x": 0.10, "y": 0.00, "z": 0.00},
-    {"id": 31, "label": "C2", "x": 0.20, "y": 0.00, "z": 0.00},
-    {"id": 32, "label": "C3", "x": 0.30, "y": 0.00, "z": 0.00},
-    {"id": 33, "label": "C4", "x": 0.40, "y": 0.00, "z": 0.00},
-    {"id": 34, "label": "C5", "x": 0.50, "y": 0.00, "z": 0.00},
-    {"id": 35, "label": "C6", "x": 0.60, "y": 0.00, "z": 0.00}
+    {
+      "id": 1,
+      "label": "LB0",
+      "x": 0.0,
+      "y": 0.0,
+      "z": -0.06
+    },
+    {
+      "id": 2,
+      "label": "LB1",
+      "x": 0.14,
+      "y": 0.0,
+      "z": -0.06
+    },
+    {
+      "id": 3,
+      "label": "LB2",
+      "x": 0.28,
+      "y": 0.0,
+      "z": -0.06
+    },
+    {
+      "id": 4,
+      "label": "LB3",
+      "x": 0.42,
+      "y": 0.0,
+      "z": -0.06
+    },
+    {
+      "id": 5,
+      "label": "LB4",
+      "x": 0.56,
+      "y": 0.0,
+      "z": -0.06
+    },
+    {
+      "id": 6,
+      "label": "LB5",
+      "x": 0.7,
+      "y": 0.0,
+      "z": -0.06
+    },
+    {
+      "id": 7,
+      "label": "LB6",
+      "x": 0.84,
+      "y": 0.0,
+      "z": -0.06
+    },
+    {
+      "id": 9,
+      "label": "LT1",
+      "x": 0.14,
+      "y": 0.1,
+      "z": -0.06
+    },
+    {
+      "id": 10,
+      "label": "LT2",
+      "x": 0.28,
+      "y": 0.1,
+      "z": -0.06
+    },
+    {
+      "id": 11,
+      "label": "LT3",
+      "x": 0.42,
+      "y": 0.1,
+      "z": -0.06
+    },
+    {
+      "id": 12,
+      "label": "LT4",
+      "x": 0.56,
+      "y": 0.1,
+      "z": -0.06
+    },
+    {
+      "id": 13,
+      "label": "LT5",
+      "x": 0.7,
+      "y": 0.1,
+      "z": -0.06
+    },
+    {
+      "id": 15,
+      "label": "RB0",
+      "x": 0.0,
+      "y": 0.0,
+      "z": 0.06
+    },
+    {
+      "id": 16,
+      "label": "RB1",
+      "x": 0.14,
+      "y": 0.0,
+      "z": 0.06
+    },
+    {
+      "id": 17,
+      "label": "RB2",
+      "x": 0.28,
+      "y": 0.0,
+      "z": 0.06
+    },
+    {
+      "id": 18,
+      "label": "RB3",
+      "x": 0.42,
+      "y": 0.0,
+      "z": 0.06
+    },
+    {
+      "id": 19,
+      "label": "RB4",
+      "x": 0.56,
+      "y": 0.0,
+      "z": 0.06
+    },
+    {
+      "id": 20,
+      "label": "RB5",
+      "x": 0.7,
+      "y": 0.0,
+      "z": 0.06
+    },
+    {
+      "id": 21,
+      "label": "RB6",
+      "x": 0.84,
+      "y": 0.0,
+      "z": 0.06
+    },
+    {
+      "id": 23,
+      "label": "RT1",
+      "x": 0.14,
+      "y": 0.1,
+      "z": 0.06
+    },
+    {
+      "id": 24,
+      "label": "RT2",
+      "x": 0.28,
+      "y": 0.1,
+      "z": 0.06
+    },
+    {
+      "id": 25,
+      "label": "RT3",
+      "x": 0.42,
+      "y": 0.1,
+      "z": 0.06
+    },
+    {
+      "id": 26,
+      "label": "RT4",
+      "x": 0.56,
+      "y": 0.1,
+      "z": 0.06
+    },
+    {
+      "id": 27,
+      "label": "RT5",
+      "x": 0.7,
+      "y": 0.1,
+      "z": 0.06
+    }
   ],
-
   "elements": [
-    {"id": 1, "type": "left_bottom_chord", "i": 1, "j": 2},
-    {"id": 2, "type": "left_bottom_chord", "i": 2, "j": 3},
-    {"id": 3, "type": "left_bottom_chord", "i": 3, "j": 4},
-    {"id": 4, "type": "left_bottom_chord", "i": 4, "j": 5},
-    {"id": 5, "type": "left_bottom_chord", "i": 5, "j": 6},
-    {"id": 6, "type": "left_bottom_chord", "i": 6, "j": 7},
-
-    {"id": 8, "type": "left_top_chord", "i": 9, "j": 10},
-    {"id": 9, "type": "left_top_chord", "i": 10, "j": 11},
-    {"id": 10, "type": "left_top_chord", "i": 11, "j": 12},
-    {"id": 11, "type": "left_top_chord", "i": 12, "j": 13},
-
-    {"id": 13, "type": "right_bottom_chord", "i": 15, "j": 16},
-    {"id": 14, "type": "right_bottom_chord", "i": 16, "j": 17},
-    {"id": 15, "type": "right_bottom_chord", "i": 17, "j": 18},
-    {"id": 16, "type": "right_bottom_chord", "i": 18, "j": 19},
-    {"id": 17, "type": "right_bottom_chord", "i": 19, "j": 20},
-    {"id": 18, "type": "right_bottom_chord", "i": 20, "j": 21},
-
-    {"id": 20, "type": "right_top_chord", "i": 23, "j": 24},
-    {"id": 21, "type": "right_top_chord", "i": 24, "j": 25},
-    {"id": 22, "type": "right_top_chord", "i": 25, "j": 26},
-    {"id": 23, "type": "right_top_chord", "i": 26, "j": 27},
-
-    {"id": 26, "type": "left_vertical", "i": 2, "j": 9},
-    {"id": 27, "type": "left_vertical", "i": 3, "j": 10},
-    {"id": 28, "type": "left_vertical", "i": 4, "j": 11},
-    {"id": 29, "type": "left_vertical", "i": 5, "j": 12},
-    {"id": 30, "type": "left_vertical", "i": 6, "j": 13},
-
-    {"id": 33, "type": "right_vertical", "i": 16, "j": 23},
-    {"id": 34, "type": "right_vertical", "i": 17, "j": 24},
-    {"id": 35, "type": "right_vertical", "i": 18, "j": 25},
-    {"id": 36, "type": "right_vertical", "i": 19, "j": 26},
-    {"id": 37, "type": "right_vertical", "i": 20, "j": 27},
-
-    {"id": 44, "type": "left_pratt_diagonal", "i": 1, "j": 9},
-    {"id": 39, "type": "left_pratt_diagonal", "i": 3, "j": 9},
-    {"id": 40, "type": "left_pratt_diagonal", "i": 4, "j": 10},
-    {"id": 42, "type": "left_pratt_diagonal", "i": 4, "j": 12},
-    {"id": 41, "type": "left_pratt_diagonal", "i": 5, "j": 13},
-    {"id": 43, "type": "left_pratt_diagonal", "i": 7, "j": 13},
-
-    {"id": 50, "type": "right_pratt_diagonal", "i": 15, "j": 23},
-    {"id": 45, "type": "right_pratt_diagonal", "i": 17, "j": 23},
-    {"id": 46, "type": "right_pratt_diagonal", "i": 18, "j": 24},
-    {"id": 48, "type": "right_pratt_diagonal", "i": 18, "j": 26},
-    {"id": 47, "type": "right_pratt_diagonal", "i": 19, "j": 27},
-    {"id": 49, "type": "right_pratt_diagonal", "i": 21, "j": 27},
-
-    {"id": 51, "type": "deck_cross_beam", "i": 1, "j": 15},
-    {"id": 52, "type": "deck_cross_beam", "i": 2, "j": 16},
-    {"id": 53, "type": "deck_cross_beam", "i": 3, "j": 17},
-    {"id": 54, "type": "deck_cross_beam", "i": 4, "j": 18},
-    {"id": 55, "type": "deck_cross_beam", "i": 5, "j": 19},
-    {"id": 56, "type": "deck_cross_beam", "i": 6, "j": 20},
-    {"id": 57, "type": "deck_cross_beam", "i": 7, "j": 21},
-
-    {"id": 59, "type": "top_cross_beam", "i": 9, "j": 23},
-    {"id": 60, "type": "top_cross_beam", "i": 10, "j": 24},
-    {"id": 61, "type": "top_cross_beam", "i": 11, "j": 25},
-    {"id": 62, "type": "top_cross_beam", "i": 12, "j": 26},
-    {"id": 63, "type": "top_cross_beam", "i": 13, "j": 27},
-
-    {"id": 65, "type": "center_deck_stringer", "i": 29, "j": 30},
-    {"id": 66, "type": "center_deck_stringer", "i": 30, "j": 31},
-    {"id": 67, "type": "center_deck_stringer", "i": 31, "j": 32},
-    {"id": 68, "type": "center_deck_stringer", "i": 32, "j": 33},
-    {"id": 69, "type": "center_deck_stringer", "i": 33, "j": 34},
-    {"id": 70, "type": "center_deck_stringer", "i": 34, "j": 35},
-
-    {"id": 71, "type": "left_floor_beam_half", "i": 1, "j": 29},
-    {"id": 72, "type": "right_floor_beam_half", "i": 29, "j": 15},
-    {"id": 73, "type": "left_floor_beam_half", "i": 2, "j": 30},
-    {"id": 74, "type": "right_floor_beam_half", "i": 30, "j": 16},
-    {"id": 75, "type": "left_floor_beam_half", "i": 3, "j": 31},
-    {"id": 76, "type": "right_floor_beam_half", "i": 31, "j": 17},
-    {"id": 77, "type": "left_floor_beam_half", "i": 4, "j": 32},
-    {"id": 78, "type": "right_floor_beam_half", "i": 32, "j": 18},
-    {"id": 79, "type": "left_floor_beam_half", "i": 5, "j": 33},
-    {"id": 80, "type": "right_floor_beam_half", "i": 33, "j": 19},
-    {"id": 81, "type": "left_floor_beam_half", "i": 6, "j": 34},
-    {"id": 82, "type": "right_floor_beam_half", "i": 34, "j": 20},
-    {"id": 83, "type": "left_floor_beam_half", "i": 7, "j": 35},
-    {"id": 84, "type": "right_floor_beam_half", "i": 35, "j": 21},
-
-    {"id": 85, "type": "deck_lateral_brace", "i": 1, "j": 16},
-    {"id": 86, "type": "deck_lateral_brace", "i": 2, "j": 17},
-    {"id": 87, "type": "deck_lateral_brace", "i": 3, "j": 18},
-    {"id": 88, "type": "deck_lateral_brace", "i": 4, "j": 19},
-    {"id": 89, "type": "deck_lateral_brace", "i": 5, "j": 20},
-    {"id": 90, "type": "deck_lateral_brace", "i": 6, "j": 21},
-
-    {"id": 93, "type": "top_lateral_brace", "i": 9, "j": 24},
-    {"id": 94, "type": "top_lateral_brace", "i": 10, "j": 25},
-    {"id": 95, "type": "top_lateral_brace", "i": 11, "j": 26},
-    {"id": 96, "type": "top_lateral_brace", "i": 12, "j": 27},
-    {"id": 97, "type": "top_lateral_brace", "i": 24, "j": 11},
-    {"id": 98, "type": "top_lateral_brace", "i": 26, "j": 13}
+    {
+      "id": 1,
+      "type": "left_bottom_chord",
+      "i": 1,
+      "j": 2
+    },
+    {
+      "id": 2,
+      "type": "left_bottom_chord",
+      "i": 2,
+      "j": 3
+    },
+    {
+      "id": 3,
+      "type": "left_bottom_chord",
+      "i": 3,
+      "j": 4
+    },
+    {
+      "id": 4,
+      "type": "left_bottom_chord",
+      "i": 4,
+      "j": 5
+    },
+    {
+      "id": 5,
+      "type": "left_bottom_chord",
+      "i": 5,
+      "j": 6
+    },
+    {
+      "id": 6,
+      "type": "left_bottom_chord",
+      "i": 6,
+      "j": 7
+    },
+    {
+      "id": 8,
+      "type": "left_top_chord",
+      "i": 9,
+      "j": 10
+    },
+    {
+      "id": 9,
+      "type": "left_top_chord",
+      "i": 10,
+      "j": 11
+    },
+    {
+      "id": 10,
+      "type": "left_top_chord",
+      "i": 11,
+      "j": 12
+    },
+    {
+      "id": 11,
+      "type": "left_top_chord",
+      "i": 12,
+      "j": 13
+    },
+    {
+      "id": 13,
+      "type": "right_bottom_chord",
+      "i": 15,
+      "j": 16
+    },
+    {
+      "id": 14,
+      "type": "right_bottom_chord",
+      "i": 16,
+      "j": 17
+    },
+    {
+      "id": 15,
+      "type": "right_bottom_chord",
+      "i": 17,
+      "j": 18
+    },
+    {
+      "id": 16,
+      "type": "right_bottom_chord",
+      "i": 18,
+      "j": 19
+    },
+    {
+      "id": 17,
+      "type": "right_bottom_chord",
+      "i": 19,
+      "j": 20
+    },
+    {
+      "id": 18,
+      "type": "right_bottom_chord",
+      "i": 20,
+      "j": 21
+    },
+    {
+      "id": 20,
+      "type": "right_top_chord",
+      "i": 23,
+      "j": 24
+    },
+    {
+      "id": 21,
+      "type": "right_top_chord",
+      "i": 24,
+      "j": 25
+    },
+    {
+      "id": 22,
+      "type": "right_top_chord",
+      "i": 25,
+      "j": 26
+    },
+    {
+      "id": 23,
+      "type": "right_top_chord",
+      "i": 26,
+      "j": 27
+    },
+    {
+      "id": 26,
+      "type": "left_vertical",
+      "i": 2,
+      "j": 9
+    },
+    {
+      "id": 27,
+      "type": "left_vertical",
+      "i": 3,
+      "j": 10
+    },
+    {
+      "id": 28,
+      "type": "left_vertical",
+      "i": 4,
+      "j": 11
+    },
+    {
+      "id": 29,
+      "type": "left_vertical",
+      "i": 5,
+      "j": 12
+    },
+    {
+      "id": 30,
+      "type": "left_vertical",
+      "i": 6,
+      "j": 13
+    },
+    {
+      "id": 33,
+      "type": "right_vertical",
+      "i": 16,
+      "j": 23
+    },
+    {
+      "id": 34,
+      "type": "right_vertical",
+      "i": 17,
+      "j": 24
+    },
+    {
+      "id": 35,
+      "type": "right_vertical",
+      "i": 18,
+      "j": 25
+    },
+    {
+      "id": 36,
+      "type": "right_vertical",
+      "i": 19,
+      "j": 26
+    },
+    {
+      "id": 37,
+      "type": "right_vertical",
+      "i": 20,
+      "j": 27
+    },
+    {
+      "id": 44,
+      "type": "left_pratt_diagonal",
+      "i": 1,
+      "j": 9
+    },
+    {
+      "id": 39,
+      "type": "left_pratt_diagonal",
+      "i": 3,
+      "j": 9
+    },
+    {
+      "id": 40,
+      "type": "left_pratt_diagonal",
+      "i": 4,
+      "j": 10
+    },
+    {
+      "id": 42,
+      "type": "left_pratt_diagonal",
+      "i": 4,
+      "j": 12
+    },
+    {
+      "id": 41,
+      "type": "left_pratt_diagonal",
+      "i": 5,
+      "j": 13
+    },
+    {
+      "id": 43,
+      "type": "left_pratt_diagonal",
+      "i": 7,
+      "j": 13
+    },
+    {
+      "id": 50,
+      "type": "right_pratt_diagonal",
+      "i": 15,
+      "j": 23
+    },
+    {
+      "id": 45,
+      "type": "right_pratt_diagonal",
+      "i": 17,
+      "j": 23
+    },
+    {
+      "id": 46,
+      "type": "right_pratt_diagonal",
+      "i": 18,
+      "j": 24
+    },
+    {
+      "id": 48,
+      "type": "right_pratt_diagonal",
+      "i": 18,
+      "j": 26
+    },
+    {
+      "id": 47,
+      "type": "right_pratt_diagonal",
+      "i": 19,
+      "j": 27
+    },
+    {
+      "id": 49,
+      "type": "right_pratt_diagonal",
+      "i": 21,
+      "j": 27
+    },
+    {
+      "id": 51,
+      "type": "deck_cross_beam",
+      "i": 1,
+      "j": 15
+    },
+    {
+      "id": 52,
+      "type": "deck_cross_beam",
+      "i": 2,
+      "j": 16
+    },
+    {
+      "id": 53,
+      "type": "deck_cross_beam",
+      "i": 3,
+      "j": 17
+    },
+    {
+      "id": 54,
+      "type": "deck_cross_beam",
+      "i": 4,
+      "j": 18
+    },
+    {
+      "id": 55,
+      "type": "deck_cross_beam",
+      "i": 5,
+      "j": 19
+    },
+    {
+      "id": 56,
+      "type": "deck_cross_beam",
+      "i": 6,
+      "j": 20
+    },
+    {
+      "id": 57,
+      "type": "deck_cross_beam",
+      "i": 7,
+      "j": 21
+    },
+    {
+      "id": 59,
+      "type": "top_cross_beam",
+      "i": 9,
+      "j": 23
+    },
+    {
+      "id": 60,
+      "type": "top_cross_beam",
+      "i": 10,
+      "j": 24
+    },
+    {
+      "id": 61,
+      "type": "top_cross_beam",
+      "i": 11,
+      "j": 25
+    },
+    {
+      "id": 62,
+      "type": "top_cross_beam",
+      "i": 12,
+      "j": 26
+    },
+    {
+      "id": 63,
+      "type": "top_cross_beam",
+      "i": 13,
+      "j": 27
+    }
   ],
-
   "supports": [
     {
       "node": 1,
       "label": "left_front_pinned_support",
-      "fixity": [1, 1, 1, 0, 0, 0]
+      "fixity": [
+        1,
+        1,
+        1,
+        0,
+        0,
+        0
+      ]
     },
     {
       "node": 15,
       "label": "left_back_pinned_support",
-      "fixity": [1, 1, 1, 0, 0, 0]
+      "fixity": [
+        1,
+        1,
+        1,
+        0,
+        0,
+        0
+      ]
     },
     {
       "node": 7,
       "label": "right_front_roller_support",
-      "fixity": [0, 1, 1, 0, 0, 0]
+      "fixity": [
+        0,
+        1,
+        1,
+        0,
+        0,
+        0
+      ]
     },
     {
       "node": 21,
       "label": "right_back_roller_support",
-      "fixity": [0, 1, 1, 0, 0, 0]
+      "fixity": [
+        0,
+        1,
+        1,
+        0,
+        0,
+        0
+      ]
     }
   ],
-
   "deflection_sensor_points": [
     {
       "sensor_id": "D1",
-      "node": 30,
-      "label": "deck_center_x_10cm",
-      "x": 0.10,
-      "y": 0.00,
-      "z": 0.00,
+      "node": 2,
+      "label": "left_bottom_chord_x_14cm",
+      "x": 0.14,
+      "y": 0.0,
+      "z": -0.06,
       "measure": "vertical_displacement_uy"
     },
     {
       "sensor_id": "D2",
-      "node": 31,
-      "label": "deck_center_x_20cm",
-      "x": 0.20,
-      "y": 0.00,
-      "z": 0.00,
+      "node": 3,
+      "label": "left_bottom_chord_x_28cm",
+      "x": 0.28,
+      "y": 0.0,
+      "z": -0.06,
       "measure": "vertical_displacement_uy"
     },
     {
       "sensor_id": "D3",
-      "node": 32,
-      "label": "deck_center_midspan_x_30cm",
-      "x": 0.30,
-      "y": 0.00,
-      "z": 0.00,
+      "node": 4,
+      "label": "left_bottom_chord_midspan_x_42cm",
+      "x": 0.42,
+      "y": 0.0,
+      "z": -0.06,
       "measure": "vertical_displacement_uy"
     },
     {
       "sensor_id": "D4",
-      "node": 33,
-      "label": "deck_center_x_40cm",
-      "x": 0.40,
-      "y": 0.00,
-      "z": 0.00,
+      "node": 5,
+      "label": "left_bottom_chord_x_56cm",
+      "x": 0.56,
+      "y": 0.0,
+      "z": -0.06,
       "measure": "vertical_displacement_uy"
     },
     {
       "sensor_id": "D5",
-      "node": 34,
-      "label": "deck_center_x_50cm",
-      "x": 0.50,
-      "y": 0.00,
-      "z": 0.00,
+      "node": 6,
+      "label": "left_bottom_chord_x_70cm",
+      "x": 0.7,
+      "y": 0.0,
+      "z": -0.06,
       "measure": "vertical_displacement_uy"
     }
   ],
-  "load_cells": [
+  "recommended_load_application_nodes": [
     {
-      "sensor_id": "LC1L",
-      "label": "left_deck_to_truss_x_10cm",
-      "deck_node": 30,
-      "truss_node": 2,
-      "connecting_element": 73,
-      "measure": "vertical_load_transfer"
+      "node": 2,
+      "label": "left_bottom_chord_load_x_14cm"
     },
     {
-      "sensor_id": "LC1R",
-      "label": "right_deck_to_truss_x_10cm",
-      "deck_node": 30,
-      "truss_node": 16,
-      "connecting_element": 74,
-      "measure": "vertical_load_transfer"
+      "node": 3,
+      "label": "left_bottom_chord_load_x_28cm"
     },
     {
-      "sensor_id": "LC2L",
-      "label": "left_deck_to_truss_x_20cm",
-      "deck_node": 31,
-      "truss_node": 3,
-      "connecting_element": 75,
-      "measure": "vertical_load_transfer"
+      "node": 4,
+      "label": "left_bottom_chord_load_midspan_x_42cm"
     },
     {
-      "sensor_id": "LC2R",
-      "label": "right_deck_to_truss_x_20cm",
-      "deck_node": 31,
-      "truss_node": 17,
-      "connecting_element": 76,
-      "measure": "vertical_load_transfer"
+      "node": 5,
+      "label": "left_bottom_chord_load_x_56cm"
     },
     {
-      "sensor_id": "LC3L",
-      "label": "left_deck_to_truss_midspan_x_30cm",
-      "deck_node": 32,
-      "truss_node": 4,
-      "connecting_element": 77,
-      "measure": "vertical_load_transfer"
-    },
-    {
-      "sensor_id": "LC3R",
-      "label": "right_deck_to_truss_midspan_x_30cm",
-      "deck_node": 32,
-      "truss_node": 18,
-      "connecting_element": 78,
-      "measure": "vertical_load_transfer"
-    },
-    {
-      "sensor_id": "LC4L",
-      "label": "left_deck_to_truss_x_40cm",
-      "deck_node": 33,
-      "truss_node": 5,
-      "connecting_element": 79,
-      "measure": "vertical_load_transfer"
-    },
-    {
-      "sensor_id": "LC4R",
-      "label": "right_deck_to_truss_x_40cm",
-      "deck_node": 33,
-      "truss_node": 19,
-      "connecting_element": 80,
-      "measure": "vertical_load_transfer"
-    },
-    {
-      "sensor_id": "LC5L",
-      "label": "left_deck_to_truss_x_50cm",
-      "deck_node": 34,
-      "truss_node": 6,
-      "connecting_element": 81,
-      "measure": "vertical_load_transfer"
-    },
-    {
-      "sensor_id": "LC5R",
-      "label": "right_deck_to_truss_x_50cm",
-      "deck_node": 34,
-      "truss_node": 20,
-      "connecting_element": 82,
-      "measure": "vertical_load_transfer"
+      "node": 6,
+      "label": "left_bottom_chord_load_x_70cm"
     }
   ],
-
-  "recommended_load_application_nodes": [
-    {"node": 30, "label": "deck_center_load_x_10cm"},
-    {"node": 31, "label": "deck_center_load_x_20cm"},
-    {"node": 32, "label": "deck_center_load_midspan_x_30cm"},
-    {"node": 33, "label": "deck_center_load_x_40cm"},
-    {"node": 34, "label": "deck_center_load_x_50cm"}
+  "sensor_nodes": [
+    2,
+    3,
+    4,
+    5,
+    6
   ],
-
-  "sensor_nodes": [30, 31, 32, 33, 34],
-  "midspan_sensor_node": 32,
-
+  "midspan_sensor_node": 4,
   "strain_gauges": [
-    {"gauge_id": "LC1L", "ele_id": 73},
-    {"gauge_id": "LC1R", "ele_id": 74},
-    {"gauge_id": "LC2L", "ele_id": 75},
-    {"gauge_id": "LC2R", "ele_id": 76},
-    {"gauge_id": "LC3L", "ele_id": 77},
-    {"gauge_id": "LC3R", "ele_id": 78},
-    {"gauge_id": "LC4L", "ele_id": 79},
-    {"gauge_id": "LC4R", "ele_id": 80},
-    {"gauge_id": "LC5L", "ele_id": 81},
-    {"gauge_id": "LC5R", "ele_id": 82}
+    {
+      "gauge_id": "LC1L",
+      "ele_id": 52
+    },
+    {
+      "gauge_id": "LC1R",
+      "ele_id": 52
+    },
+    {
+      "gauge_id": "LC2L",
+      "ele_id": 53
+    },
+    {
+      "gauge_id": "LC2R",
+      "ele_id": 53
+    },
+    {
+      "gauge_id": "LC3L",
+      "ele_id": 54
+    },
+    {
+      "gauge_id": "LC3R",
+      "ele_id": 54
+    },
+    {
+      "gauge_id": "LC4L",
+      "ele_id": 55
+    },
+    {
+      "gauge_id": "LC4R",
+      "ele_id": 55
+    },
+    {
+      "gauge_id": "LC5L",
+      "ele_id": 56
+    },
+    {
+      "gauge_id": "LC5R",
+      "ele_id": 56
+    }
   ],
   "gauge_calibration": {
     "enabled": true,
@@ -401,19 +760,19 @@
     "alpha": 0.8,
     "mac_weight": 10.0,
     "healthy_mac_threshold": 0.95,
-    "healthy_ortho_threshold": 0.10,
-    "healthy_nrmse_threshold": 0.10,
+    "healthy_ortho_threshold": 0.1,
+    "healthy_nrmse_threshold": 0.1,
     "require_detector_agreement": false,
     "debounce_seconds": 1.5,
     "min_interval_seconds": 5.0
   },
-
   "notes": [
     "Geometry and steel profiles for openseespy/steel_bridge.py (3D, 6-DOF OpenSees model).",
     "End-panel top nodes (LT0, LT6, RT0, RT6) and their members are omitted: no end top chords, verticals, cross-beams, or lateral braces; interior top network remains from LT1/RT1 inward.",
-    "Pratt diagonals pivot at bottom-chord element 3 (LB2–LB3): label i≤3 uses LBi–LT(i−1) (LB0–LT1 at support); i>3 uses LBi–LT(i+1) except LB6–LT5; LB1/LB5 verticals only. Mirrored on right truss (RB0–RT1, RB2–RT1, RB3–RT2, RB4–RT5, RB6–RT5).",
-    "Main truss and deck transfer members use the 15x15x3 angle steel profile by rule.",
-    "Pratt diagonals and lateral bracing use the 15x3 steel flat bar profile by rule.",
-    "Bolted joints and load cells are represented as design metadata; a future solver still needs connection stiffness and sensor response models."
+    "Pratt diagonals pivot at bottom-chord element 3 (LB2\u2013LB3): label i\u22643 uses LBi\u2013LT(i\u22121) (LB0\u2013LT1 at support); i>3 uses LBi\u2013LT(i+1) except LB6\u2013LT5; LB1/LB5 verticals only. Mirrored on right truss (RB0\u2013RT1, RB2\u2013RT1, RB3\u2013RT2, RB4\u2013RT5, RB6\u2013RT5).",
+    "Main truss members and deck_cross_beam/top_cross_beam use the 15x15x3 angle steel profile by rule.",
+    "Pratt diagonals use the 15x3 steel flat bar profile by rule.",
+    "Center deck stringer, floor beam halves, and all lateral bracing have been removed; deck_cross_beam is the sole left-to-right deck member at each panel point.",
+    "Strain gauges LC1L/R\u2013LC5L/R remapped to deck_cross_beam elements 52\u201356 (L and R share the same element)."
   ]
 }
